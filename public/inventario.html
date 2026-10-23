@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Equipos & Activos - Sistema de Inventario Laboratorio</title>
+        <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = savedTheme ? savedTheme : (prefersDark ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+        <!-- Sidebar de Navegación -->
+        <!-- Sidebar de Navegación Estandarizado -->
+        <!-- Sidebar de Navegación Estandarizado -->
+    <aside class="sidebar">
+    <div class="sidebar-header">
+        <div class="brand-logo-box">
+            <i class="fa-solid fa-server"></i>
+        </div>
+        <div class="brand-text-group">
+            <span class="brand-name">LabInventario</span>
+            <span class="brand-sub">Control de Sistemas</span>
+        </div>
+        <span class="brand-badge">PROD</span>
+    </div>
+
+    <nav class="sidebar-nav">
+        <div class="nav-section">
+            <span class="nav-section-title">Panel General</span>
+            <a href="index.html" class="nav-link" id="nav-dashboard">
+                <i class="fa-solid fa-chart-pie"></i>
+                <span>Dashboard</span>
+            </a>
+        </div>
+
+        <div class="nav-section">
+            <span class="nav-section-title">Gestión de Activos</span>
+            <a href="inventario.html" class="nav-link active" id="nav-inventario">
+                <i class="fa-solid fa-desktop"></i>
+                <span>Equipos & Activos</span>
+            </a>
+            <a href="ubicaciones.html" class="nav-link" id="nav-ubicaciones">
+                <i class="fa-solid fa-location-dot"></i>
+                <span>Ubicaciones & Puestos</span>
+            </a>
+        </div>
+
+        <div class="nav-section">
+            <span class="nav-section-title">Operaciones</span>
+            <a href="mantenimientos.html" class="nav-link" id="nav-mantenimientos">
+                <i class="fa-solid fa-screwdriver-wrench"></i>
+                <span>Mantenimiento & Falla</span>
+                <span class="nav-counter alert" id="sidebar-mantenimiento-count" style="display: none;">0</span>
+            </a>
+        </div>
+    </nav>
+
+    <div class="sidebar-footer">
+        <div class="user-card-wrapper">
+            <div class="user-avatar-status">
+                <div class="user-avatar-badge">ADM</div>
+                <span class="status-dot-online" title="Conectado"></span>
+            </div>
+            <div class="user-meta">
+                <span class="user-name">Administrador</span>
+                <span class="user-role">Superuser Lab</span>
+            </div>
+            <button class="sidebar-action-btn" title="Configuración de Sistema" aria-label="Ajustes">
+                <i class="fa-solid fa-gear"></i>
+            </button>
+        </div>
+    </div>
+</aside>
+
+    <!-- Contenedor Maestro -->
+    <div class="main-wrapper">
+                <!-- Topbar Estandarizada -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <span class="breadcrumb-root">Laboratorio</span>
+                <i class="fa-solid fa-chevron-right breadcrumb-separator"></i>
+                <span class="breadcrumb-current">Equipos & Activos</span>
+            </div>
+                        <div class="topbar-right">
+                <div class="system-badge">
+                    <span class="system-badge-dot"></span>
+                    <span>Base de Datos Online</span>
+                </div>
+                <button id="cmd-palette-trigger" class="topbar-search-trigger" title="Buscar en todo el sistema (Ctrl + K)">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <span class="search-placeholder-text">Buscar activos, salas, comandos...</span>
+                    <kbd class="kbd-shortcut">Ctrl K</kbd>
+                </button>
+                <button id="theme-toggle-btn" class="topbar-icon-btn" title="Cambiar tema de color" aria-label="Cambiar tema">
+                    <i class="fa-solid fa-sun"></i>
+                </button>
+            </div>
+        </header>
+
+                <main class="content-area">
+            <!-- Encabezado de Página Estandarizado -->
+            <div class="page-header">
+                <div class="page-header-content">
+                    <h1>Equipos & Activos Tecnológicos</h1>
+                    <p>Inventario centralizado de estaciones de trabajo, servidores, redes y componentes.</p>
+                </div>
+                <div class="page-header-actions">
+                    <button id="btn-exportar-inventario" class="btn btn-outline" title="Descargar inventario filtrado en Excel (CSV)">
+                        <i class="fa-solid fa-file-csv"></i>
+                        <span>Exportar CSV</span>
+                    </button>
+                    <button id="btn-nuevo-equipo" class="btn btn-primary" title="Registrar un nuevo activo">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Nuevo Equipo</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Barra de Filtros -->
+            <div class="filters-bar">
+                <div class="search-input-wrapper">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="input-busqueda" class="input-text" placeholder="Buscar por código, serial, marca o modelo...">
+                </div>
+                <select id="filtro-sala" class="select-input">
+                    <option value="">Todas las Salas</option>
+                </select>
+                <select id="filtro-estado" class="select-input">
+                    <option value="">Todos los Estados</option>
+                    <option value="OPERATIVO">Operativo</option>
+                    <option value="CON_FALLA">Con Falla</option>
+                    <option value="EN_MANTENIMIENTO">En Mantenimiento</option>
+                    <option value="EN_PRESTAMO">En Préstamo</option>
+                    <option value="DE_BAJA">De Baja</option>
+                </select>
+            </div>
+
+            <!-- Tabla de Datos -->
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 160px;">Código</th>
+                            <th>Equipo / Modelo</th>
+                            <th>Ubicación / Puesto</th>
+                            <th>Especificaciones</th>
+                            <th style="width: 170px;">Estado</th>
+                            <th style="width: 110px; text-align: right;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-equipos">
+                        <!-- Renderizado dinámico desde inventario.js -->
+                    </tbody>
+                </table>
+                <div id="table-footer" class="table-footer">
+                    <span id="counter-equipos">Cargando registros...</span>
+                    <div id="pagination-controls" class="pagination-controls"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Accesible: Nuevo Equipo (Estilo Shadcn UI) -->
+    <div id="modal-nuevo-equipo" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div>
+                    <h3 id="modal-title" class="modal-title">Registrar Nuevo Equipo</h3>
+                    <p class="modal-description">Ingresa las especificaciones y asigna su puesto en el laboratorio.</p>
+                </div>
+                <button type="button" id="btn-cerrar-modal" class="btn-icon" aria-label="Cerrar modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <form id="form-nuevo-equipo">
+                <div class="modal-body">
+                    <div id="modal-alert" class="alert-message alert-error"></div>
+
+                    <!-- Sección 1: Datos Principales -->
+                    <div class="form-section">
+                        <div class="form-section-title">Datos Principales</div>
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label for="input-codigo" class="form-label required">Código Patrimonial</label>
+                                <input type="text" id="input-codigo" name="codigo_patrimonial" class="form-input" placeholder="Ej: PAT-PC-004" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="input-serial" class="form-label required">Número de Serie</label>
+                                <input type="text" id="input-serial" name="numero_serie" class="form-input" placeholder="Ej: 5CD2348X9Z" required>
+                            </div>
+                        </div>
+
+                        <div class="form-grid-3">
+                            <div class="form-group">
+                                <label for="select-categoria" class="form-label required">Categoría</label>
+                                <select id="select-categoria" name="categoria" class="form-select" required>
+                                    <option value="PC_ESCRITORIO">PC de Escritorio</option>
+                                    <option value="ALL_IN_ONE">All-in-One</option>
+                                    <option value="MONITOR">Monitor</option>
+                                    <option value="NETWORKING">Networking (Switch/Router)</option>
+                                    <option value="PROYECTOR">Proyector</option>
+                                    <option value="PERIFERICO">Periférico</option>
+                                    <option value="COMPONENTE_INTERNO">Componente Interno</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="input-marca" class="form-label required">Marca</label>
+                                <input type="text" id="input-marca" name="marca" class="form-input" placeholder="Ej: HP, Dell, Lenovo" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="input-modelo" class="form-label required">Modelo</label>
+                                <input type="text" id="input-modelo" name="modelo" class="form-input" placeholder="Ej: ProDesk 400 G6" required>
+                            </div>
+                        </div>
+
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label for="select-modal-estado" class="form-label required">Estado Inicial</label>
+                                <select id="select-modal-estado" name="estado" class="form-select" required>
+                                    <option value="OPERATIVO" selected>Operativo</option>
+                                    <option value="EN_MANTENIMIENTO">En Mantenimiento</option>
+                                    <option value="CON_FALLA">Con Falla</option>
+                                    <option value="EN_PRESTAMO">En Préstamo</option>
+                                    <option value="DE_BAJA">De Baja</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="input-fecha-ingreso" class="form-label">Fecha de Ingreso</label>
+                                <input type="date" id="input-fecha-ingreso" name="fecha_ingreso" class="form-input">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sección 2: Ubicación y Puesto -->
+                    <div class="form-section">
+                        <div class="form-section-title">Ubicación y Puesto Asignado</div>
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label for="select-sala" class="form-label required">Sala / Laboratorio</label>
+                                <select id="select-sala" name="sala_id" class="form-select" required>
+                                    <option value="">Selecciona una sala...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="select-puesto" class="form-label">Puesto Disponible</label>
+                                <select id="select-puesto" name="puesto_id" class="form-select" disabled>
+                                    <option value="">Selecciona primero una sala</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sección 3: Especificaciones Técnicas -->
+                    <div class="form-section">
+                        <div class="form-section-title">Especificaciones de Hardware y Red (Opcional)</div>
+                        <div class="form-grid-3">
+                            <div class="form-group">
+                                <label for="input-cpu" class="form-label">Procesador (CPU)</label>
+                                <input type="text" id="input-cpu" name="cpu" class="form-input" placeholder="Ej: Core i5-10500">
+                            </div>
+                            <div class="form-group">
+                                <label for="input-ram" class="form-label">Memoria RAM (GB)</label>
+                                <input type="number" id="input-ram" name="ram_gb" class="form-input" min="1" max="512" placeholder="Ej: 16">
+                            </div>
+                            <div class="form-group">
+                                <label for="input-disco" class="form-label">Almacenamiento</label>
+                                <input type="text" id="input-disco" name="almacenamiento" class="form-input" placeholder="Ej: 512 GB SSD NVMe">
+                            </div>
+                        </div>
+
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label for="input-ip" class="form-label">Dirección IP Asignada</label>
+                                <input type="text" id="input-ip" name="ip_asignada" class="form-input" placeholder="Ej: 192.168.10.25">
+                            </div>
+                            <div class="form-group">
+                                <label for="input-mac" class="form-label">Dirección MAC</label>
+                                <input type="text" id="input-mac" name="mac_address" class="form-input" placeholder="Ej: AA:BB:CC:11:22:33">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sección 4: Notas -->
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label for="input-notas" class="form-label">Notas u Observaciones</label>
+                            <textarea id="input-notas" name="notas" class="form-textarea" placeholder="Detalles adicionales sobre el activo..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" id="btn-cancelar-modal" class="btn btn-outline">Cancelar</button>
+                    <button type="submit" id="btn-guardar-equipo" class="btn btn-primary"><i class="fa-solid fa-check"></i><span>Guardar Activo</span></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    
+    
+    
+    <!-- Modal: Editar Equipo (#modal-editar-equipo) -->
+    <div id="modal-editar-equipo" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-edit-title">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div>
+                    <h3 id="modal-edit-title" class="modal-title">Editar Ficha del Activo</h3>
+                    <p class="modal-description">Actualiza las especificaciones, ubicación o estado del equipo.</p>
+                </div>
+                <button type="button" id="btn-cerrar-edit" class="btn-icon" aria-label="Cerrar modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <form id="form-editar-equipo">
+                <input type="hidden" id="edit-equipo-id" name="id">
+                <div class="modal-body">
+                    <div id="modal-edit-alert" class="alert-message alert-error"></div>
+
+                    <!-- Datos Principales -->
+                    <div class="form-section">
+                        <div class="form-section-title">Datos Principales</div>
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label for="edit-codigo" class="form-label required">Código Patrimonial</label>
+                                <input type="text" id="edit-codigo" name="codigo_patrimonial" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-serial" class="form-label required">Número de Serie</label>
+                                <input type="text" id="edit-serial" name="numero_serie" class="form-input" required>
+                            </div>
+                        </div>
+
+                        <div class="form-grid-3">
+                            <div class="form-group">
+                                <label for="edit-categoria" class="form-label required">Categoría</label>
+                                <select id="edit-categoria" name="categoria" class="form-select" required>
+                                    <option value="PC_ESCRITORIO">PC de Escritorio</option>
+                                    <option value="ALL_IN_ONE">All-in-One</option>
+                                    <option value="MONITOR">Monitor</option>
+                                    <option value="NETWORKING">Networking (Switch/Router)</option>
+                                    <option value="PROYECTOR">Proyector</option>
+                                    <option value="PERIFERICO">Periférico</option>
+                                    <option value="COMPONENTE_INTERNO">Componente Interno</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-marca" class="form-label required">Marca</label>
+                                <input type="text" id="edit-marca" name="marca" class="form-input" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-modelo" class="form-label required">Modelo</label>
+                                <input type="text" id="edit-modelo" name="modelo" class="form-input" required>
+                            </div>
+                        </div>
+
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label for="edit-estado" class="form-label required">Estado Actual</label>
+                                <select id="edit-estado" name="estado" class="form-select" required>
+                                    <option value="OPERATIVO">Operativo</option>
+                                    <option value="EN_MANTENIMIENTO">En Mantenimiento</option>
+                                    <option value="CON_FALLA">Con Falla</option>
+                                    <option value="EN_PRESTAMO">En Préstamo</option>
+                                    <option value="DE_BAJA">De Baja</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-fecha-ingreso" class="form-label">Fecha de Ingreso</label>
+                                <input type="date" id="edit-fecha-ingreso" name="fecha_ingreso" class="form-input">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ubicación y Puesto -->
+                    <div class="form-section">
+                        <div class="form-section-title">Ubicación y Puesto Asignado</div>
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label for="edit-select-sala" class="form-label required">Sala / Laboratorio</label>
+                                <select id="edit-select-sala" name="sala_id" class="form-select" required>
+                                    <option value="">Selecciona una sala...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-select-puesto" class="form-label">Puesto Físico</label>
+                                <select id="edit-select-puesto" name="puesto_id" class="form-select">
+                                    <option value="">Sin puesto fijo (Mesa general)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Especificaciones -->
+                    <div class="form-section">
+                        <div class="form-section-title">Especificaciones Técnicas</div>
+                        <div class="form-grid-3">
+                            <div class="form-group">
+                                <label for="edit-cpu" class="form-label">Procesador (CPU)</label>
+                                <input type="text" id="edit-cpu" name="cpu" class="form-input">
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-ram" class="form-label">RAM (GB)</label>
+                                <input type="number" id="edit-ram" name="ram_gb" class="form-input" min="1" max="512">
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-disco" class="form-label">Almacenamiento</label>
+                                <input type="text" id="edit-disco" name="almacenamiento" class="form-input">
+                            </div>
+                        </div>
+
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label for="edit-ip" class="form-label">Dirección IP</label>
+                                <input type="text" id="edit-ip" name="ip_asignada" class="form-input">
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-mac" class="form-label">Dirección MAC</label>
+                                <input type="text" id="edit-mac" name="mac_address" class="form-input">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notas -->
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label for="edit-notas" class="form-label">Notas u Observaciones</label>
+                            <textarea id="edit-notas" name="notas" class="form-textarea"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" id="btn-cancelar-edit" class="btn btn-outline">Cancelar</button>
+                    <button type="submit" id="btn-guardar-edit" class="btn btn-primary"><i class="fa-solid fa-check"></i><span>Guardar Cambios</span></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Confirmar Baja Lógica (#modal-confirmar-baja) -->
+    <div id="modal-confirmar-baja" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-baja-title">
+        <div class="modal-card" style="max-width: 480px;">
+            <div class="modal-header" style="border-bottom: 1px solid #fee2e2; background-color: #fef2f2;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 32px; height: 32px; border-radius: 50%; background: #fee2e2; color: #dc2626; display: flex; align-items: center; justify-content: center;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 id="modal-baja-title" class="modal-title" style="color: #991b1b;">Desincorporar Activo</h3>
+                        <p class="modal-description" style="color: #b91c1c;">Esta acción cambiará el estado del equipo a DE BAJA.</p>
+                    </div>
+                </div>
+                <button type="button" id="btn-cerrar-baja" class="btn-icon" aria-label="Cerrar modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <form id="form-confirmar-baja">
+                <input type="hidden" id="baja-equipo-id" name="id">
+                <div class="modal-body" style="gap: 1rem;">
+                    <div style="font-size: 13.5px; line-height: 1.5; color: var(--text-secondary);">
+                        ¿Estás seguro de dar de baja el activo <strong id="baja-equipo-codigo" style="color: var(--text-primary);">PAT-PC-000</strong>?
+                        <br><br>
+                        El equipo pasará a estado <strong>DE BAJA</strong> y su <strong>puesto físico asignado quedará liberado inmediatamente</strong> para que otro activo pueda ocuparlo.
+                    </div>
+
+                    <div class="form-group">
+                        <label for="baja-motivo" class="form-label">Motivo de la desincorporación (Opcional)</label>
+                        <textarea id="baja-motivo" name="motivo" class="form-textarea" placeholder="Ej: Daño en placa madre irreparable, fin de ciclo de vida útil..." style="min-height: 70px;"></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" id="btn-cancelar-baja" class="btn btn-outline">Cancelar</button>
+                    <button type="submit" id="btn-submit-baja" class="btn btn-danger"><i class="fa-solid fa-ban"></i><span>Confirmar Desincorporación</span></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Ficha Técnica Detallada e Historial de Mantenimiento -->
+    <div id="modal-detalle-equipo" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="detalle-titulo-codigo">
+        <div class="modal-card" style="max-width: 720px;">
+            <div class="modal-header">
+                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <span id="detalle-codigo" class="cell-code" style="font-size: 16px; padding: 4px 10px;">PAT-PC-000</span>
+                    <span id="detalle-categoria-tag" class="cat-tag">PC ESCRITORIO</span>
+                    <div id="detalle-badge-estado"></div>
+                </div>
+                <button type="button" id="btn-cerrar-detalle" class="btn-icon" aria-label="Cerrar modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Título y Marca/Modelo -->
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <h2 id="detalle-nombre-modelo" style="font-size: 18px; font-weight: 700; color: var(--text-primary);">HP ProDesk 400 G6</h2>
+                        <div id="detalle-serial" style="font-size: 13px; color: var(--text-muted); margin-top: 2px;">Serial: 5CD2348X1Q</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div id="detalle-sala-nombre" style="font-size: 13.5px; font-weight: 600; color: var(--brand-blue);">Laboratorio 1 - Programación</div>
+                        <div id="detalle-puesto-nombre" style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">Puesto: LAB1-P01</div>
+                    </div>
+                </div>
+
+                <!-- Bloque 1: Grid de Especificaciones de Hardware -->
+                <div class="form-section">
+                    <div class="form-section-title">Especificaciones de Hardware & Conectividad</div>
+                    <div class="spec-box-grid">
+                        <div class="spec-box">
+                            <span class="spec-box-label"><i class="fa-solid fa-microchip"></i> Procesador / CPU</span>
+                            <span id="detalle-spec-cpu" class="spec-box-value">Intel Core i5-10500</span>
+                        </div>
+                        <div class="spec-box">
+                            <span class="spec-box-label"><i class="fa-solid fa-memory"></i> Memoria RAM</span>
+                            <span id="detalle-spec-ram" class="spec-box-value">16 GB</span>
+                        </div>
+                        <div class="spec-box">
+                            <span class="spec-box-label"><i class="fa-solid fa-hard-drive"></i> Almacenamiento / Disco</span>
+                            <span id="detalle-spec-disco" class="spec-box-value">512 GB SSD NVMe</span>
+                        </div>
+                        <div class="spec-box">
+                            <span class="spec-box-label"><i class="fa-solid fa-network-wired"></i> Dirección IP / Red</span>
+                            <span id="detalle-spec-ip" class="spec-box-value">192.168.10.21</span>
+                        </div>
+                        <div class="spec-box">
+                            <span class="spec-box-label"><i class="fa-solid fa-ethernet"></i> Dirección MAC</span>
+                            <span id="detalle-spec-mac" class="spec-box-value">A0:B3:CC:11:22:33</span>
+                        </div>
+                        <div class="spec-box">
+                            <span class="spec-box-label"><i class="fa-solid fa-calendar-days"></i> Fecha de Ingreso</span>
+                            <span id="detalle-spec-fecha" class="spec-box-value">2024-01-15</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bloque 2: Notas / Observaciones -->
+                <div class="form-section" id="detalle-bloque-notas">
+                    <div class="form-section-title">Notas u Observaciones del Activo</div>
+                    <div id="detalle-notas" style="font-size: 13px; color: var(--text-secondary); background: var(--bg-muted); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                        Sin notas adicionales.
+                    </div>
+                </div>
+
+                <!-- Bloque 3: Trazabilidad & Hoja de Vida del Activo -->
+                <div class="form-section" id="seccion-trazabilidad">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                        <div class="form-section-title" style="margin-bottom: 0;">Trazabilidad & Hoja de Vida del Activo</div>
+                        <span style="font-size: 11.5px; color: var(--text-muted); font-weight: 500;">Historial cronológico unificado</span>
+                    </div>
+
+                    <!-- Banner de Préstamo Activo (si el activo está EN_PRESTAMO) -->
+                    <div id="prestamo-banner-container" style="display: none; margin-bottom: 1rem;"></div>
+
+                    <!-- Línea de Tiempo Vertical Unificada -->
+                    <div id="detalle-timeline-container" class="timeline-vertical">
+                        <div class="timeline-empty">
+                            <i class="fa-solid fa-spinner fa-spin" style="margin-right: 6px;"></i>
+                            Cargando trazabilidad y hoja de vida...
+                        </div>
+                    </div>
+
+                    <!-- Contenedor oculto para compatibilidad con scripts existentes -->
+                    <div id="detalle-historial-container" style="display: none;"></div>
+                </div>
+            </div>
+
+            <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button type="button" id="btn-ficha-reportar" class="btn btn-warning" title="Reportar falla técnica para este equipo">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <span>Reportar Falla</span>
+                    </button>
+                    <button type="button" id="btn-abrir-prestamo" class="btn btn-outline" style="display: none;" title="Asignar este equipo en préstamo">
+                        <i class="fa-solid fa-handshake"></i>
+                        <span>Asignar en Préstamo</span>
+                    </button>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button type="button" id="btn-imprimir-acta" class="btn btn-outline">
+                        <i class="fa-solid fa-print"></i>
+                        <span>Imprimir Acta Oficial</span>
+                    </button>
+                    <button type="button" id="btn-detalle-abrir-qr" class="btn btn-outline"><i class="fa-solid fa-qrcode"></i><span>Ver Código QR</span></button>
+                    <button type="button" id="btn-cerrar-detalle-pie" class="btn btn-primary"><i class="fa-solid fa-check"></i><span>Cerrar</span></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-etiqueta-qr" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="qr-modal-title">
+        <div class="modal-card" style="max-width: 440px;">
+            <div class="modal-header">
+                <div>
+                    <h3 id="qr-modal-title" class="modal-title">Etiqueta Patrimonial de Activo</h3>
+                    <p class="modal-description">Código QR escaneable para identificación física del equipo.</p>
+                </div>
+                <button type="button" id="btn-cerrar-qr" class="btn-icon" aria-label="Cerrar modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Tarjeta de Etiqueta Imprimible -->
+                <div id="printable-tag" class="qr-tag-preview">
+                    <div class="qr-tag-header">LABORATORIO DE COMPUTACIÓN · CONTROL PATRIMONIAL</div>
+                    
+                    <div class="qr-tag-canvas-box">
+                        <div id="qr-canvas-wrapper"></div>
+                    </div>
+
+                    <div id="qr-label-codigo" class="qr-tag-code">PAT-PC-000</div>
+
+                    <div class="qr-tag-details">
+                        <div id="qr-label-modelo" style="font-weight: 600; color: #0f172a;">HP ProDesk 400 G6</div>
+                        <div id="qr-label-serial" style="color: #64748b; font-size: 11.5px; margin-top: 2px;">S/N: 5CD2348X1Q</div>
+                        <div id="qr-label-ubicacion" style="color: #2563eb; font-weight: 500; font-size: 11.5px; margin-top: 4px;">Laboratorio 1 - Programación</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" id="btn-cancelar-qr" class="btn btn-outline">Cerrar</button>
+                <button type="button" id="btn-imprimir-qr" class="btn btn-primary"><i class="fa-solid fa-print"></i><span>Imprimir Etiqueta</span></button>
+            </div>
+        </div>
+    </div>
+
+    
+    <!-- Modal: Asignar Equipo en Préstamo (#modal-prestamo-equipo) -->
+    <div id="modal-prestamo-equipo" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-prestamo-title" style="display: none;">
+        <div class="modal-card" style="max-width: 520px;">
+            <div class="modal-header">
+                <div>
+                    <h3 id="modal-prestamo-title" class="modal-title">Asignar Equipo en Préstamo</h3>
+                    <p class="modal-description" id="modal-prestamo-subtitle">Registra la salida formal del activo para uso institucional o académico.</p>
+                </div>
+                <button type="button" id="btn-cerrar-prestamo" class="btn-icon" aria-label="Cerrar modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <form id="form-prestamo-equipo">
+                <input type="hidden" id="prestamo-equipo-id" name="equipo_id" value="">
+                <div class="modal-body" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <!-- Mini ficha del activo -->
+                    <div style="padding: 0.75rem 1rem; border-radius: var(--radius-md); background: var(--bg-muted); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+                        <div>
+                            <div id="prestamo-activo-codigo" class="cell-code" style="font-size: 13px;">PAT-000</div>
+                            <div id="prestamo-activo-nombre" style="font-weight: 600; font-size: 14px; color: var(--text-primary); margin-top: 2px;">Equipo</div>
+                        </div>
+                        <span id="prestamo-activo-categoria" class="cat-tag">EQUIPO</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="prestamo-solicitante" class="form-label">
+                            Nombre del Solicitante / Docente <span class="required" style="color: var(--destructive); font-weight: bold;">*</span>
+                        </label>
+                        <input type="text" id="prestamo-solicitante" name="solicitante_nombre" class="form-control" placeholder="Ej. Prof. Carlos Mendoza" required autocomplete="off">
+                    </div>
+
+                    <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                        <div class="form-group">
+                            <label for="prestamo-identificacion" class="form-label">
+                                Cédula / ID Institucional <span class="required" style="color: var(--destructive); font-weight: bold;">*</span>
+                            </label>
+                            <input type="text" id="prestamo-identificacion" name="solicitante_identificacion" class="form-control" placeholder="Ej. 14.582.910" required autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label for="prestamo-fecha-estimada" class="form-label">
+                                Fecha Estimada Devolución <span class="required" style="color: var(--destructive); font-weight: bold;">*</span>
+                            </label>
+                            <input type="date" id="prestamo-fecha-estimada" name="fecha_devolucion_estimada" class="form-control" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="prestamo-destino" class="form-label">
+                            Aula o Destino de Uso <span class="required" style="color: var(--destructive); font-weight: bold;">*</span>
+                        </label>
+                        <input type="text" id="prestamo-destino" name="destino_uso" class="form-control" placeholder="Ej. Aula Magna / Defensa de Grado" required autocomplete="off">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="prestamo-observaciones" class="form-label">
+                            Observaciones de entrega
+                        </label>
+                        <textarea id="prestamo-observaciones" name="observaciones" class="form-control" rows="2" placeholder="Estado inicial de entrega, cables, accesorios, control remoto, etc."></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+                    <button type="button" id="btn-cancelar-prestamo" class="btn btn-outline">Cancelar</button>
+                    <button type="submit" id="btn-guardar-prestamo" class="btn btn-primary">
+                        <i class="fa-solid fa-handshake"></i>
+                        <span>Confirmar Préstamo</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/libs/qrcode.min.js"></script>
+    <!-- Script de la Vista -->
+    <script type="module" src="js/views/inventario.js"></script>
+</body>
+</html>

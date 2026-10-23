@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Ejecutivo - LabInventario</title>
+        <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = savedTheme ? savedTheme : (prefersDark ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+        <!-- Sidebar de Navegación -->
+        <!-- Sidebar de Navegación Estandarizado -->
+        <!-- Sidebar de Navegación Estandarizado -->
+    <aside class="sidebar">
+    <div class="sidebar-header">
+        <div class="brand-logo-box">
+            <i class="fa-solid fa-server"></i>
+        </div>
+        <div class="brand-text-group">
+            <span class="brand-name">LabInventario</span>
+            <span class="brand-sub">Control de Sistemas</span>
+        </div>
+        <span class="brand-badge">PROD</span>
+    </div>
+
+    <nav class="sidebar-nav">
+        <div class="nav-section">
+            <span class="nav-section-title">Panel General</span>
+            <a href="index.html" class="nav-link active" id="nav-dashboard">
+                <i class="fa-solid fa-chart-pie"></i>
+                <span>Dashboard</span>
+            </a>
+        </div>
+
+        <div class="nav-section">
+            <span class="nav-section-title">Gestión de Activos</span>
+            <a href="inventario.html" class="nav-link" id="nav-inventario">
+                <i class="fa-solid fa-desktop"></i>
+                <span>Equipos & Activos</span>
+            </a>
+            <a href="ubicaciones.html" class="nav-link" id="nav-ubicaciones">
+                <i class="fa-solid fa-location-dot"></i>
+                <span>Ubicaciones & Puestos</span>
+            </a>
+        </div>
+
+        <div class="nav-section">
+            <span class="nav-section-title">Operaciones</span>
+            <a href="mantenimientos.html" class="nav-link" id="nav-mantenimientos">
+                <i class="fa-solid fa-screwdriver-wrench"></i>
+                <span>Mantenimiento & Falla</span>
+                <span class="nav-counter alert" id="sidebar-mantenimiento-count" style="display: none;">0</span>
+            </a>
+        </div>
+    </nav>
+
+    <div class="sidebar-footer">
+        <div class="user-card-wrapper">
+            <div class="user-avatar-status">
+                <div class="user-avatar-badge">ADM</div>
+                <span class="status-dot-online" title="Conectado"></span>
+            </div>
+            <div class="user-meta">
+                <span class="user-name">Administrador</span>
+                <span class="user-role">Superuser Lab</span>
+            </div>
+            <button class="sidebar-action-btn" title="Configuración de Sistema" aria-label="Ajustes">
+                <i class="fa-solid fa-gear"></i>
+            </button>
+        </div>
+    </div>
+</aside>
+
+    <!-- Contenedor Maestro -->
+    <div class="main-wrapper">
+                <!-- Topbar Estandarizada -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <span class="breadcrumb-root">Laboratorio</span>
+                <i class="fa-solid fa-chevron-right breadcrumb-separator"></i>
+                <span class="breadcrumb-current">Dashboard Ejecutivo</span>
+            </div>
+                        <div class="topbar-right">
+                <div class="system-badge">
+                    <span class="system-badge-dot"></span>
+                    <span>Monitoreo Activo</span>
+                </div>
+                <button id="cmd-palette-trigger" class="topbar-search-trigger" title="Buscar en todo el sistema (Ctrl + K)">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <span class="search-placeholder-text">Buscar activos, salas, comandos...</span>
+                    <kbd class="kbd-shortcut">Ctrl K</kbd>
+                </button>
+                <button id="theme-toggle-btn" class="topbar-icon-btn" title="Cambiar tema de color" aria-label="Cambiar tema">
+                    <i class="fa-solid fa-sun"></i>
+                </button>
+            </div>
+        </header>
+
+        <main class="content-area">
+            <!-- Encabezado de Página Estandarizado -->
+                        <div class="page-header">
+                <div class="page-header-content">
+                    <h1>Dashboard Ejecutivo</h1>
+                    <p>Métricas globales, tasa de operatividad y actividad en tiempo real de los laboratorios.</p>
+                </div>
+                <div class="page-header-actions">
+                    <button id="btn-header-nuevo-equipo" class="btn btn-primary">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Nuevo Equipo</span>
+                    </button>
+                    <a href="mantenimientos.html" class="btn btn-outline">
+                        <i class="fa-solid fa-screwdriver-wrench"></i>
+                        <span>Incidencias</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- 4 Tarjetas Métricas Superiores (KPIs Ejecutivos) -->
+            <div class="stats-grid">
+                <!-- KPI 1: Total Activos (Microchip / Server) -->
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Total de Activos</span>
+                        <div class="stat-icon" style="background: rgba(15, 23, 42, 0.08); color: var(--primary);">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+                                <rect x="9" y="9" width="6" height="6"></rect>
+                                <line x1="9" y1="1" x2="9" y2="4"></line>
+                                <line x1="15" y1="1" x2="15" y2="4"></line>
+                                <line x1="9" y1="20" x2="9" y2="23"></line>
+                                <line x1="15" y1="20" x2="15" y2="23"></line>
+                                <line x1="20" y1="9" x2="23" y2="9"></line>
+                                <line x1="20" y1="14" x2="23" y2="14"></line>
+                                <line x1="1" y1="9" x2="4" y2="9"></line>
+                                <line x1="1" y1="14" x2="4" y2="14"></line>
+                            </svg>
+                        </div>
+                    </div>
+                    <div id="kpi-total-equipos" class="stat-value">--</div>
+                    <span id="kpi-total-desc" class="stat-desc">Consultando inventario...</span>
+                </div>
+
+                <!-- KPI 2: Tasa de Operatividad (Pulso / Salud) -->
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="stat-title">Operatividad</span>
+                            <div id="kpi-health-badge" class="stat-badge-health badge-operativo">
+                                <span class="pulse-dot" style="background: #10b981;"></span>
+                                <span id="kpi-health-text">Óptimo</span>
+                            </div>
+                        </div>
+                        <div class="stat-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                            </svg>
+                        </div>
+                    </div>
+                    <div id="kpi-tasa-operatividad" class="stat-value" style="color: #10b981;">--%</div>
+                    <div class="progress-bar-container">
+                        <div id="kpi-operatividad-bar" class="progress-bar-fill" style="width: 0%;"></div>
+                    </div>
+                    <span id="kpi-operatividad-desc" class="stat-desc" style="margin-top: 4px;">-- de -- activos en línea</span>
+                </div>
+
+                <!-- KPI 3: Fallas & Taller (Llave de Mantenimiento) -->
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Fallas & Taller</span>
+                        <div class="stat-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div id="kpi-fallas" class="stat-value" style="color: #ef4444;">--</div>
+                    <span id="kpi-fallas-desc" class="stat-desc">Fuera de servicio / En revisión</span>
+                </div>
+
+                <!-- KPI 4: Repuestos en Depósito (Caja de Almacén) -->
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Repuestos en Depósito</span>
+                        <div class="stat-icon" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                            </svg>
+                        </div>
+                    </div>
+                    <div id="kpi-repuestos" class="stat-value">--</div>
+                    <span class="stat-desc">Componentes y piezas internas</span>
+                </div>
+            </div>
+
+            <!-- Grilla Principal de Análisis (2 Columnas) -->
+            <div class="dashboard-grid-two">
+                <!-- Columna Izquierda: Ocupación por Salas & Distribución de Categorías -->
+                <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                    <!-- Tarjeta 1: Ocupación Física de Salas -->
+                    <div class="panel-card">
+                        <div class="panel-header">
+                            <div>
+                                <h3 class="panel-title">Ocupación Física por Salas</h3>
+                                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Capacidad total vs puestos ocupados</div>
+                            </div>
+                            <a href="ubicaciones.html" class="btn btn-outline" style="padding: 4px 10px; font-size: 12px;">Ver Salas</a>
+                        </div>
+                        <div id="salas-distribucion-list" class="panel-body">
+                            <div style="color: var(--text-muted); font-size: 13px;">Cargando salas...</div>
+                        </div>
+                    </div>
+
+                    <!-- Tarjeta 2: Distribución por Categorías -->
+                    <div class="panel-card">
+                        <div class="panel-header">
+                            <div>
+                                <h3 class="panel-title">Distribución por Categorías</h3>
+                                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Composición del inventario de activos</div>
+                            </div>
+                            <a href="inventario.html" class="btn btn-outline" style="padding: 4px 10px; font-size: 12px;">Ir a Inventario</a>
+                        </div>
+                        <div id="categorias-distribucion-list" class="panel-body">
+                            <div style="color: var(--text-muted); font-size: 13px;">Cargando categorías...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Columna Derecha: Atención Requerida & Actividad Reciente -->
+                <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                    <!-- Tarjeta 3: Atención Requerida -->
+                    <div class="panel-card">
+                        <div class="panel-header">
+                            <div>
+                                <h3 class="panel-title">Atención Requerida</h3>
+                                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Órdenes técnicas pendientes de resolución</div>
+                            </div>
+                            <a href="mantenimientos.html" class="btn btn-outline" style="padding: 4px 10px; font-size: 12px;">Ir a Bitácora</a>
+                        </div>
+                        <div class="panel-body" style="padding: 0;">
+                            <table class="data-table" style="border: none;">
+                                <thead>
+                                    <tr>
+                                        <th>Equipo</th>
+                                        <th>Falla / Título</th>
+                                        <th>Prioridad</th>
+                                        <th style="text-align: right;">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-atencion-requerida">
+                                    <tr>
+                                        <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                                            Consultando estado de incidencias...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Tarjeta 4: Línea de Tiempo de Actividad Reciente -->
+                    <div class="panel-card">
+                        <div class="panel-header">
+                            <div>
+                                <h3 class="panel-title">Actividad Reciente</h3>
+                                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Últimos movimientos en el laboratorio</div>
+                            </div>
+                        </div>
+                        <div id="timeline-movimientos-list" class="panel-body">
+                            <div style="color: var(--text-muted); font-size: 13px;">Cargando actividad...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Script de la Vista -->
+    <script type="module" src="js/views/dashboard.js"></script>
+</body>
+</html>
