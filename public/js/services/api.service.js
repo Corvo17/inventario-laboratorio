@@ -280,31 +280,9 @@ export async function obtenerMapaUbicaciones() {
  * Actualiza automáticamente el contador de incidencias/fallas pendientes en el sidebar
  */
 export async function actualizarBadgeSidebarMantenimiento() {
-    const badge = document.getElementById('sidebar-mantenimiento-count');
-    if (!badge) return;
-
-    try {
-        const res = await obtenerEstadisticasMantenimiento();
-        if (res && res.success && res.data) {
-            const count = parseInt(res.data.pendientes, 10) || 0;
-            if (count > 0) {
-                badge.textContent = count;
-                badge.style.display = 'inline-flex';
-            } else {
-                badge.style.display = 'none';
-            }
-        }
-    } catch (e) {
-        console.warn('Error al actualizar contador de mantenimiento del sidebar:', e);
-    }
-}
-
-// Auto-ejecución al cargar el DOM en cualquier vista del sistema
-if (typeof document !== 'undefined') {
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            actualizarBadgeSidebarMantenimiento();
-        });
+    // Desacoplado: Sistema enfocado exclusivamente en Inventario Patrimonial y Ubicaciones
+    return;
+});
     } else {
         actualizarBadgeSidebarMantenimiento();
     }

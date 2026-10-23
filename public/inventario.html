@@ -53,15 +53,6 @@
                 <span>Ubicaciones & Puestos</span>
             </a>
         </div>
-
-        <div class="nav-section">
-            <span class="nav-section-title">Operaciones</span>
-            <a href="mantenimientos.html" class="nav-link" id="nav-mantenimientos">
-                <i class="fa-solid fa-screwdriver-wrench"></i>
-                <span>Mantenimiento & Falla</span>
-                <span class="nav-counter alert" id="sidebar-mantenimiento-count" style="display: none;">0</span>
-            </a>
-        </div>
     </nav>
 
     <div class="sidebar-footer">
@@ -137,8 +128,7 @@
                 <select id="filtro-estado" class="select-input">
                     <option value="">Todos los Estados</option>
                     <option value="OPERATIVO">Operativo</option>
-                    <option value="CON_FALLA">Con Falla</option>
-                    <option value="EN_MANTENIMIENTO">En Mantenimiento</option>
+                    
                     <option value="EN_PRESTAMO">En Préstamo</option>
                     <option value="DE_BAJA">De Baja</option>
                 </select>
@@ -226,8 +216,8 @@
                                 <label for="select-modal-estado" class="form-label required">Estado Inicial</label>
                                 <select id="select-modal-estado" name="estado" class="form-select" required>
                                     <option value="OPERATIVO" selected>Operativo</option>
-                                    <option value="EN_MANTENIMIENTO">En Mantenimiento</option>
-                                    <option value="CON_FALLA">Con Falla</option>
+                                    
+                                    
                                     <option value="EN_PRESTAMO">En Préstamo</option>
                                     <option value="DE_BAJA">De Baja</option>
                                 </select>
@@ -366,8 +356,8 @@
                                 <label for="edit-estado" class="form-label required">Estado Actual</label>
                                 <select id="edit-estado" name="estado" class="form-select" required>
                                     <option value="OPERATIVO">Operativo</option>
-                                    <option value="EN_MANTENIMIENTO">En Mantenimiento</option>
-                                    <option value="CON_FALLA">Con Falla</option>
+                                    
+                                    
                                     <option value="EN_PRESTAMO">En Préstamo</option>
                                     <option value="DE_BAJA">De Baja</option>
                                 </select>
@@ -577,10 +567,6 @@
 
             <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                 <div style="display: flex; gap: 8px; align-items: center;">
-                    <button type="button" id="btn-ficha-reportar" class="btn btn-warning" title="Reportar falla técnica para este equipo">
-                        <i class="fa-solid fa-triangle-exclamation"></i>
-                        <span>Reportar Falla</span>
-                    </button>
                     <button type="button" id="btn-abrir-prestamo" class="btn btn-outline" style="display: none;" title="Asignar este equipo en préstamo">
                         <i class="fa-solid fa-handshake"></i>
                         <span>Asignar en Préstamo</span>

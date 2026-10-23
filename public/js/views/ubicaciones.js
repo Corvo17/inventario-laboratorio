@@ -170,13 +170,7 @@ function configurarEventosModal() {
     });
 
     // Acción: Reportar Falla -> redirige a mantenimientos.html con el equipo preseleccionado
-    if (btnResumenReportar) {
-        btnResumenReportar.addEventListener('click', () => {
-            if (!activoSeleccionado) return;
-            cerrarModalResumen();
-            window.location.href = `mantenimientos.html?equipo_id=${activoSeleccionado.id}`;
-        });
-    }
+    // Reporte de fallas desacoplado: sistema enfocado exclusivamente en inventario patrimonial
 
     // Acción: Ver Ficha Técnica -> redirige a inventario.html
     if (btnReubicarEquipo) {

@@ -1,7 +1,6 @@
 import { initThemeToggle } from '../components/theme-toggle.js';
 import { initCommandPalette } from '../components/command-palette.js';
-import { obtenerMetricasDashboard, obtenerMantenimientos } from '../services/api.service.js';
-import { renderPriorityBadge } from '../components/status-badge.js';
+import { obtenerMetricasDashboard } from '../services/api.service.js';
 
 // KPIs Superiores
 const kpiTotalEquipos = document.getElementById('kpi-total-equipos');
@@ -11,14 +10,14 @@ const kpiOperatividadBar = document.getElementById('kpi-operatividad-bar');
 const kpiOperatividadDesc = document.getElementById('kpi-operatividad-desc');
 const kpiHealthBadge = document.getElementById('kpi-health-badge');
 const kpiHealthText = document.getElementById('kpi-health-text');
-const kpiFallas = document.getElementById('kpi-fallas');
-const kpiFallasDesc = document.getElementById('kpi-fallas-desc');
-const kpiRepuestos = document.getElementById('kpi-repuestos');
+const kpiPuestosOcupados = document.getElementById('kpi-puestos-ocupados');
+const kpiPuestosDesc = document.getElementById('kpi-puestos-desc');
+const kpiDeposito = document.getElementById('kpi-deposito');
+const kpiDepositoDesc = document.getElementById('kpi-deposito-desc');
 
 // Contenedores
 const salasDistribucionList = document.getElementById('salas-distribucion-list');
 const categoriasDistribucionList = document.getElementById('categorias-distribucion-list');
-const tablaAtencionRequerida = document.getElementById('tabla-atencion-requerida');
 const timelineMovimientosList = document.getElementById('timeline-movimientos-list');
 
 /**
@@ -50,39 +49,45 @@ function animateCounter(element, targetValue, suffix = '') {
 }
 
 /**
- * Carga principal de datos del Dashboard
+ * Carga principal de datos del Dashboard Patrimonial
  */
 async function cargarDashboard() {
     try {
-        const [resMetricas, resMantenimientos] = await Promise.all([
-            obtenerMetricasDashboard(),
-            obtenerMantenimientos({ estado_resultado: 'PENDIENTE' })
-        ]);
+        const resMetricas = await obtenerMetricasDashboard();
 
-        if (resMetricas.success && resMetricas.data) {
+        if (resMetricas && resMetricas.success && resMetricas.data) {
             const m = resMetricas.data;
 
             // 1. Total Equipos
             animateCounter(kpiTotalEquipos, m.total_equipos);
-            kpiTotalDesc.textContent = `${m.operativos} operativos · ${m.en_prestamo} en préstamo`;
+            if (kpiTotalDesc) {
+                kpiTotalDesc.textContent = `${m.operativos} operativos • ${m.en_prestamo} en préstamo`;
+            }
 
             // 2. Tasa de Operatividad y Micro-badge de Salud
             animateCounter(kpiTasaOperatividad, m.tasa_operatividad, '%');
-            setTimeout(() => {
-                kpiOperatividadBar.style.width = `${m.tasa_operatividad}%`;
-            }, 100);
-            kpiOperatividadDesc.textContent = `${m.operativos} de ${m.total_equipos} activos en línea`;
-
-            // Actualizar badge de salud
+            if (kpiOperatividadBar) {
+                setTimeout(() => {
+                    kpiOperatividadBar.style.width = `${m.tasa_operatividad}%`;
+                }, 100);
+            }
+            if (kpiOperatividadDesc) {
+                kpiOperatividadDesc.textContent = `${m.operativos} de ${m.total_equipos} activos en línea`;
+            }
             actualizarHealthBadge(m.tasa_operatividad);
 
-            // 3. Fallas y Taller
-            const totalFallas = m.con_falla + m.en_mantenimiento;
-            animateCounter(kpiFallas, totalFallas);
-            kpiFallasDesc.textContent = `${m.con_falla} con falla · ${m.en_mantenimiento} en revisión`;
+            // 3. Puestos Ocupados
+            animateCounter(kpiPuestosOcupados, m.puestos_ocupados);
+            if (kpiPuestosDesc) {
+                const totalCap = m.total_capacidad_puestos || m.puestos_ocupados;
+                kpiPuestosDesc.textContent = `${m.puestos_ocupados} de ${totalCap} puestos ocupados`;
+            }
 
-            // 4. Repuestos
-            animateCounter(kpiRepuestos, m.repuestos_deposito);
+            // 4. Equipos en Depósito / Reserva
+            animateCounter(kpiDeposito, m.equipos_deposito);
+            if (kpiDepositoDesc) {
+                kpiDepositoDesc.textContent = `${m.equipos_deposito} piezas y equipos en reserva`;
+            }
 
             // 5. Ocupación de Salas
             renderizarOcupacionSalas(m.equipos_por_sala);
@@ -90,17 +95,12 @@ async function cargarDashboard() {
             // 6. Distribución de Categorías
             renderizarDistribucionCategorias(m.distribucion_categorias, m.total_equipos);
 
-            // 7. Últimos Movimientos
+            // 7. Últimos Movimientos Patrimoniales
             renderizarTimelineMovimientos(m.ultimos_movimientos);
         }
 
-        // 8. Atención Requerida (Incidencias pendientes)
-        if (resMantenimientos.success) {
-            renderizarAtencionRequerida(resMantenimientos.data);
-        }
-
     } catch (error) {
-        console.error('Error al inicializar dashboard ejecutivo:', error);
+        console.error('Error al inicializar dashboard patrimonial:', error);
     }
 }
 
@@ -109,15 +109,18 @@ function actualizarHealthBadge(tasa) {
 
     if (tasa >= 90) {
         kpiHealthBadge.className = 'stat-badge-health badge-operativo';
-        kpiHealthBadge.querySelector('.pulse-dot').style.background = '#10b981';
+        const dot = kpiHealthBadge.querySelector('.pulse-dot');
+        if (dot) dot.style.background = '#10b981';
         kpiHealthText.textContent = 'Óptimo';
     } else if (tasa >= 75) {
         kpiHealthBadge.className = 'stat-badge-health badge-en-mantenimiento';
-        kpiHealthBadge.querySelector('.pulse-dot').style.background = '#f59e0b';
+        const dot = kpiHealthBadge.querySelector('.pulse-dot');
+        if (dot) dot.style.background = '#f59e0b';
         kpiHealthText.textContent = 'Atención';
     } else {
         kpiHealthBadge.className = 'stat-badge-health badge-con-falla';
-        kpiHealthBadge.querySelector('.pulse-dot').style.background = '#ef4444';
+        const dot = kpiHealthBadge.querySelector('.pulse-dot');
+        if (dot) dot.style.background = '#ef4444';
         kpiHealthText.textContent = 'Crítico';
     }
 }
@@ -126,13 +129,14 @@ function actualizarHealthBadge(tasa) {
  * Renderiza la ocupación de salas con desglose de puestos
  */
 function renderizarOcupacionSalas(salas) {
+    if (!salasDistribucionList) return;
     if (!salas || salas.length === 0) {
         salasDistribucionList.innerHTML = '<div style="color: var(--text-muted); font-size: 13px;">No hay salas registradas.</div>';
         return;
     }
 
     salasDistribucionList.innerHTML = salas.map(sala => {
-        const esDeposito = sala.sala_nombre.toLowerCase().includes('depósito') || sala.capacidad_puestos === 0;
+        const esDeposito = (sala.sala_nombre || '').toLowerCase().includes('depósito') || (sala.sala_nombre || '').toLowerCase().includes('deposito') || sala.capacidad_puestos === 0;
 
         return `
             <div class="room-dist-item">
@@ -145,7 +149,7 @@ function renderizarOcupacionSalas(salas) {
                         }
                     </div>
                     <span class="room-dist-count">
-                        <strong>${sala.total_equipos}</strong> activos · <span style="color: #10b981;">${sala.operativos} op.</span>
+                        <strong>${sala.total_equipos}</strong> activos • <span style="color: #10b981;">${sala.operativos} op.</span>
                     </span>
                 </div>
                 
@@ -159,7 +163,7 @@ function renderizarOcupacionSalas(salas) {
                     </div>
                 ` : `
                     <div style="font-size: 11.5px; color: var(--text-secondary); background: var(--bg-muted); padding: 4px 8px; border-radius: 4px; margin-top: 2px;">
-                        Reserva de piezas y componentes para sustitución técnica.
+                        Reserva de piezas, componentes y equipos en stock.
                     </div>
                 `}
             </div>
@@ -171,6 +175,7 @@ function renderizarOcupacionSalas(salas) {
  * Renderiza la distribución por categorías de hardware
  */
 function renderizarDistribucionCategorias(categorias, totalGeneral) {
+    if (!categoriasDistribucionList) return;
     if (!categorias || categorias.length === 0) {
         categoriasDistribucionList.innerHTML = '<div style="color: var(--text-muted); font-size: 13px;">Sin categorías registradas.</div>';
         return;
@@ -200,83 +205,52 @@ function renderizarDistribucionCategorias(categorias, totalGeneral) {
 }
 
 /**
- * Renderiza la tabla de atención requerida
- */
-function renderizarAtencionRequerida(pendientes) {
-    if (!pendientes || pendientes.length === 0) {
-        tablaAtencionRequerida.innerHTML = `
-            <tr>
-                <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 2.5rem 1.5rem;">
-                    <div style="font-size: 26px; margin-bottom: 6px;">🎉</div>
-                    <div style="font-weight: 600; color: #10b981; font-size: 14px;">¡Todos los sistemas y equipos están 100% operativos!</div>
-                    <div style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;">No hay reportes de fallas técnicas pendientes de resolver.</div>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-
-    tablaAtencionRequerida.innerHTML = pendientes.slice(0, 5).map(item => {
-        return `
-            <tr>
-                <td>
-                    <span class="cell-code" style="font-size: 11.5px;">${item.codigo_patrimonial}</span>
-                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">${item.sala_nombre || 'Sin sala'}</div>
-                </td>
-                <td>
-                    <div style="font-weight: 500; font-size: 13px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                        ${item.titulo}
-                    </div>
-                    <div style="font-size: 11px; color: var(--text-muted);">${item.tipo}</div>
-                </td>
-                <td>
-                    ${renderPriorityBadge(item.prioridad)}
-                </td>
-                <td style="text-align: right;">
-                    <a href="mantenimientos.html" class="btn btn-primary" style="padding: 4px 8px; font-size: 11.5px; text-decoration: none;">
-                        Resolver
-                    </a>
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
-
-/**
- * Renderiza la línea de tiempo de últimos movimientos
+ * Renderiza la línea de tiempo de últimos movimientos patrimoniales
  */
 function renderizarTimelineMovimientos(movimientos) {
+    if (!timelineMovimientosList) return;
     if (!movimientos || movimientos.length === 0) {
-        timelineMovimientosList.innerHTML = '<div style="color: var(--text-muted); font-size: 13px;">No hay movimientos recientes.</div>';
+        timelineMovimientosList.innerHTML = '<div style="color: var(--text-muted); font-size: 13px; padding: 1.5rem; text-align: center;">No hay movimientos patrimoniales recientes.</div>';
         return;
     }
 
     timelineMovimientosList.innerHTML = `
         <div class="activity-timeline">
             ${movimientos.map(mov => {
-                const esMant = mov.tipo_evento === 'MANTENIMIENTO';
                 const fecha = mov.fecha ? mov.fecha.split(' ')[0] : 'Hoy';
+                let iconHtml = '';
+                let badgeClass = 'badge-primary';
+                let badgeLabel = 'MOVIMIENTO';
+
+                if (mov.tipo_evento === 'PRESTAMO') {
+                    iconHtml = '<i class="fa-solid fa-handshake" style="color: #6366f1; font-size: 13px;"></i>';
+                    badgeClass = 'badge-en-prestamo';
+                    badgeLabel = 'PRÉSTAMO';
+                } else if (mov.tipo_evento === 'DEVOLUCION') {
+                    iconHtml = '<i class="fa-solid fa-rotate-left" style="color: #10b981; font-size: 13px;"></i>';
+                    badgeClass = 'badge-operativo';
+                    badgeLabel = 'DEVUELTO';
+                } else {
+                    iconHtml = '<i class="fa-solid fa-box-archive" style="color: #3b82f6; font-size: 13px;"></i>';
+                    badgeClass = 'badge-operativo';
+                    badgeLabel = 'ALTA';
+                }
 
                 return `
                     <div class="activity-item">
                         <div class="activity-icon-box">
-                            ${esMant ? `
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
-                                </svg>
-                            ` : `
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="20 6 9 17 4 12"></polyline>
-                                </svg>
-                            `}
+                            ${iconHtml}
                         </div>
-                        <div class="activity-details">
-                            <div class="activity-header">
-                                <span class="activity-code">${mov.codigo_patrimonial}</span>
+                        <div class="activity-details" style="flex: 1;">
+                            <div class="activity-header" style="display: flex; justify-content: space-between; align-items: center;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="activity-code">${mov.codigo_patrimonial}</span>
+                                    <span class="status-badge ${badgeClass}" style="font-size: 10px; padding: 1px 6px;">${badgeLabel}</span>
+                                </div>
                                 <span class="activity-time">${fecha}</span>
                             </div>
-                            <div class="activity-desc">${mov.descripcion}</div>
-                            <div style="font-size: 11px; color: var(--text-muted);">${mov.modelo}</div>
+                            <div class="activity-desc" style="margin-top: 3px;">${mov.descripcion}</div>
+                            <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">${mov.modelo || ''}</div>
                         </div>
                     </div>
                 `;

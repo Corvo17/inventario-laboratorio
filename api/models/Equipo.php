@@ -314,15 +314,15 @@ class Equipo {
     public static function getDashboardMetrics(): array {
         $db = Database::getConnection();
 
-        // 1. Conteo general y por estados
+        // 1. Conteo general y por estados patrimoniales
         $sqlCounts = "
             SELECT 
                 COUNT(*) AS total_equipos,
                 SUM(CASE WHEN estado = 'OPERATIVO' THEN 1 ELSE 0 END) AS operativos,
-                SUM(CASE WHEN estado = 'EN_MANTENIMIENTO' THEN 1 ELSE 0 END) AS en_mantenimiento,
-                SUM(CASE WHEN estado = 'CON_FALLA' THEN 1 ELSE 0 END) AS con_falla,
                 SUM(CASE WHEN estado = 'EN_PRESTAMO' THEN 1 ELSE 0 END) AS en_prestamo,
-                SUM(CASE WHEN estado = 'DE_BAJA' THEN 1 ELSE 0 END) AS de_baja
+                SUM(CASE WHEN estado = 'DE_BAJA' THEN 1 ELSE 0 END) AS de_baja,
+                SUM(CASE WHEN puesto_id IS NOT NULL THEN 1 ELSE 0 END) AS puestos_ocupados,
+                SUM(CASE WHEN puesto_id IS NULL THEN 1 ELSE 0 END) AS equipos_deposito
             FROM equipos
         ";
         $stmtCounts = $db->query($sqlCounts);
@@ -330,22 +330,16 @@ class Equipo {
 
         $total = (int)($counts['total_equipos'] ?? 0);
         $operativos = (int)($counts['operativos'] ?? 0);
-        $enMantenimiento = (int)($counts['en_mantenimiento'] ?? 0);
-        $conFalla = (int)($counts['con_falla'] ?? 0);
         $enPrestamo = (int)($counts['en_prestamo'] ?? 0);
         $deBaja = (int)($counts['de_baja'] ?? 0);
+        $puestosOcupados = (int)($counts['puestos_ocupados'] ?? 0);
+        $equiposDeposito = (int)($counts['equipos_deposito'] ?? 0);
 
         $tasaOperatividad = $total > 0 ? round(($operativos / $total) * 100, 1) : 0;
 
-        // 2. Repuestos en Depósito
-        $sqlRepuestos = "
-            SELECT COUNT(*) 
-            FROM equipos e
-            LEFT JOIN salas s ON e.sala_id = s.id
-            WHERE s.nombre LIKE '%Depósito%' OR e.categoria = 'COMPONENTE_INTERNO'
-        ";
-        $stmtRepuestos = $db->query($sqlRepuestos);
-        $repuestosDeposito = (int)$stmtRepuestos->fetchColumn();
+        // 2. Capacidad total de puestos en todas las salas
+        $stmtCapacidad = $db->query("SELECT COALESCE(SUM(capacidad_puestos), 0) FROM salas");
+        $totalCapacidadPuestos = (int)$stmtCapacidad->fetchColumn();
 
         // 3. Ocupación física real por sala
         $sqlSalas = "
@@ -392,19 +386,33 @@ class Equipo {
         $stmtCategorias = $db->query($sqlCategorias);
         $distribucionCategorias = $stmtCategorias->fetchAll();
 
-        // 5. Últimos Movimientos (Línea de tiempo de actividad reciente)
+        // 5. Últimos Movimientos Patrimoniales
         $sqlMovimientos = "
             (
                 SELECT 
-                    'MANTENIMIENTO' AS tipo_evento,
-                    m.fecha_reporte AS fecha,
+                    'PRESTAMO' AS tipo_evento,
+                    p.fecha_prestamo AS fecha,
                     e.codigo_patrimonial,
                     CONCAT(e.marca, ' ', e.modelo) AS modelo,
-                    m.titulo AS descripcion,
-                    m.prioridad,
-                    m.estado_resultado AS estado
-                FROM mantenimientos m
-                JOIN equipos e ON m.equipo_id = e.id
+                    CONCAT('Préstamo asignado a ', p.solicitante_nombre, ' (', p.destino_uso, ')') AS descripcion,
+                    'MEDIA' AS prioridad,
+                    p.estado_prestamo AS estado
+                FROM prestamos p
+                JOIN equipos e ON p.equipo_id = e.id
+            )
+            UNION ALL
+            (
+                SELECT 
+                    'DEVOLUCION' AS tipo_evento,
+                    p.fecha_devolucion_real AS fecha,
+                    e.codigo_patrimonial,
+                    CONCAT(e.marca, ' ', e.modelo) AS modelo,
+                    CONCAT('Devolución de préstamo por ', p.solicitante_nombre) AS descripcion,
+                    'BAJA' AS prioridad,
+                    'DEVUELTO' AS estado
+                FROM prestamos p
+                JOIN equipos e ON p.equipo_id = e.id
+                WHERE p.fecha_devolucion_real IS NOT NULL
             )
             UNION ALL
             (
@@ -419,7 +427,7 @@ class Equipo {
                 FROM equipos e
             )
             ORDER BY fecha DESC
-            LIMIT 5
+            LIMIT 6
         ";
         $stmtMovimientos = $db->query($sqlMovimientos);
         $ultimosMovimientos = $stmtMovimientos->fetchAll();
@@ -427,12 +435,13 @@ class Equipo {
         return [
             'total_equipos'           => $total,
             'operativos'              => $operativos,
-            'en_mantenimiento'        => $enMantenimiento,
-            'con_falla'               => $conFalla,
             'en_prestamo'             => $enPrestamo,
             'de_baja'                 => $deBaja,
             'tasa_operatividad'       => $tasaOperatividad,
-            'repuestos_deposito'      => $repuestosDeposito,
+            'puestos_ocupados'        => $puestosOcupados,
+            'total_capacidad_puestos' => $totalCapacidadPuestos,
+            'equipos_deposito'        => $equiposDeposito,
+            'repuestos_deposito'      => $equiposDeposito,
             'equipos_por_sala'        => $equiposPorSala,
             'distribucion_categorias' => $distribucionCategorias,
             'ultimos_movimientos'     => $ultimosMovimientos
@@ -483,30 +492,7 @@ class Equipo {
             return null;
         }
 
-        // 2. Historial de Mantenimientos e Incidencias
-        $sqlMantenimientos = "
-            SELECT 
-                id,
-                equipo_id,
-                fecha_reporte,
-                fecha_resolucion,
-                tipo,
-                prioridad,
-                titulo,
-                descripcion_falla,
-                diagnostico_tecnico,
-                acciones_realizadas,
-                tecnico_responsable,
-                estado_resultado
-            FROM mantenimientos
-            WHERE equipo_id = :equipo_id
-            ORDER BY fecha_reporte DESC, id DESC
-        ";
-        $stmtMant = $db->prepare($sqlMantenimientos);
-        $stmtMant->execute([':equipo_id' => $id]);
-        $mantenimientos = $stmtMant->fetchAll();
-
-        // 3. Historial de Préstamos
+        // 2. Historial de Préstamos
         $sqlPrestamos = "
             SELECT 
                 id,
@@ -527,7 +513,7 @@ class Equipo {
         $stmtPrest->execute([':equipo_id' => $id]);
         $prestamos = $stmtPrest->fetchAll();
 
-        // 4. Préstamo Activo actual (si existe)
+        // 3. Préstamo Activo actual (si existe)
         $prestamoActivo = null;
         foreach ($prestamos as $pr) {
             if ($pr['estado_prestamo'] === 'ACTIVO') {
@@ -536,7 +522,7 @@ class Equipo {
             }
         }
 
-        // 5. Construcción de Línea de Tiempo Unificada Cronológica
+        // 4. Construcción de Línea de Tiempo Patrimonial Unificada
         $timeline = [];
 
         // Hito: Alta e Incorporación
@@ -555,28 +541,18 @@ class Equipo {
             'icono'       => 'fa-box-archive'
         ];
 
-        // Hitos: Mantenimientos e Incidencias
-        foreach ($mantenimientos as $m) {
-            $badgeTipo = 'secondary';
-            if ($m['estado_resultado'] === 'RESUELTO') $badgeTipo = 'success';
-            elseif ($m['estado_resultado'] === 'EN_CURSO') $badgeTipo = 'warning';
-            elseif ($m['estado_resultado'] === 'DERIVADO_A_BAJA') $badgeTipo = 'destructive';
-
+        // Hito: Asignación a Puesto Físico (si está en puesto)
+        if (!empty($equipo['puesto_codigo'])) {
             $timeline[] = [
-                'tipo'             => 'MANTENIMIENTO',
-                'id'               => (int)$m['id'],
-                'categoria'        => $m['tipo'],
-                'titulo'           => 'Mantenimiento: ' . $m['titulo'],
-                'fecha'            => $m['fecha_reporte'],
-                'fecha_resolucion' => $m['fecha_resolucion'],
-                'descripcion'      => $m['descripcion_falla'],
-                'diagnostico'      => $m['diagnostico_tecnico'],
-                'acciones'         => $m['acciones_realizadas'],
-                'tecnico'          => $m['tecnico_responsable'],
-                'prioridad'        => $m['prioridad'],
-                'estado'           => $m['estado_resultado'],
-                'badge_tipo'       => $badgeTipo,
-                'icono'            => 'fa-wrench'
+                'tipo'        => 'REUBICACION',
+                'categoria'   => 'ASIGNACION_FISICA',
+                'titulo'      => 'Asignación a Puesto Físico',
+                'fecha'       => $fechaAlta,
+                'ubicacion'   => "{$equipo['sala_nombre']} - {$equipo['puesto_codigo']}",
+                'descripcion' => "Activo instalado en {$equipo['sala_nombre']}, puesto {$equipo['puesto_codigo']}.",
+                'estado'      => 'OPERATIVO',
+                'badge_tipo'  => 'outline',
+                'icono'       => 'fa-desktop'
             ];
         }
 
@@ -609,7 +585,7 @@ class Equipo {
             ];
         }
 
-        // Ordenar la línea de tiempo de forma cronológica descendente (el más reciente primero)
+        // Ordenar la línea de tiempo de forma cronológica descendente
         usort($timeline, function($a, $b) {
             return strtotime($b['fecha']) <=> strtotime($a['fecha']);
         });
@@ -617,7 +593,7 @@ class Equipo {
         return [
             'equipo'                   => $equipo,
             'prestamo_activo'          => $prestamoActivo,
-            'historial_mantenimientos' => $mantenimientos,
+            'historial_mantenimientos' => [],
             'historial_prestamos'      => $prestamos,
             'timeline'                 => $timeline
         ];

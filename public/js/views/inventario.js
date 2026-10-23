@@ -516,9 +516,7 @@ async function abrirModalDetalle(id) {
     }
 
     equipoSeleccionadoId = id;
-    if (btnFichaReportar) {
-        btnFichaReportar.dataset.id = id;
-    }
+
 
     try {
         const res = await obtenerHojaVidaEquipo(id);
@@ -621,23 +619,11 @@ async function abrirModalDetalle(id) {
                         iconName = 'fa-box-archive';
                         badgeHtml = '<span class="status-badge badge-success">INCORPORACIÓN</span>';
                         bodyDetailsHtml = `<div>${item.descripcion || 'Alta formal en el inventario del laboratorio.'}</div>`;
-                    } else if (item.tipo === 'MANTENIMIENTO') {
-                        dotClass = 'dot-mantenimiento';
-                        iconName = 'fa-wrench';
-                        badgeHtml = renderMaintenanceStatusBadge(item.estado);
-                        bodyDetailsHtml = `
-                            <div>${item.descripcion || item.titulo}</div>
-                            ${item.diagnostico ? `
-                                <div style="font-size: 12px; color: var(--brand-blue); background: var(--prestamo-bg); padding: 5px 8px; border-radius: 4px; margin-top: 5px; border: 1px solid var(--prestamo-border);">
-                                    <strong>Diagnóstico / Solución:</strong> ${item.diagnostico} ${item.acciones ? '• ' + item.acciones : ''}
-                                </div>
-                            ` : ''}
-                            <div class="timeline-meta-grid">
-                                <span><i class="fa-solid fa-user-gear"></i> ${item.tecnico || 'Técnico asignado'}</span>
-                                <span><i class="fa-solid fa-layer-group"></i> Tipo: ${item.categoria || 'PREVENTIVO'}</span>
-                                ${item.fecha_resolucion ? `<span><i class="fa-solid fa-circle-check" style="color: #10b981;"></i> Resuelto: ${item.fecha_resolucion.split(' ')[0]}</span>` : '<span><i class="fa-regular fa-hourglass-half"></i> En atención</span>'}
-                            </div>
-                        `;
+                    } else if (item.tipo === 'REUBICACION') {
+                        dotClass = 'dot-alta';
+                        iconName = 'fa-desktop';
+                        badgeHtml = '<span class="status-badge badge-primary">PUESTO FÍSICO</span>';
+                        bodyDetailsHtml = `<div>${item.descripcion || item.ubicacion || 'Asignación física a puesto en sala.'}</div>`;
                     } else if (item.tipo === 'PRESTAMO') {
                         const esActivo = (item.estado === 'ACTIVO');
                         dotClass = esActivo ? 'dot-prestamo-activo' : 'dot-prestamo-devuelto';
@@ -988,18 +974,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 Toast.warning('Atención', 'No hay un equipo seleccionado para generar el acta.');
                 return;
             }
-            imprimirActaEquipo(equipoDetalleActual, equipoDetalleActual.historial_mantenimiento || []);
-        });
-    }
-
-    if (btnFichaReportar) {
-        btnFichaReportar.addEventListener('click', () => {
-            const targetId = equipoSeleccionadoId || btnFichaReportar.dataset.id;
-            if (targetId) {
-                window.location.href = `mantenimientos.html?equipo_id=${encodeURIComponent(targetId)}`;
-            } else {
-                Toast.warning('Atención', 'No se ha identificado el activo a reportar.');
-            }
+            imprimirActaEquipo(equipoDetalleActual, equipoDetalleActual.historial_prestamos || []);
         });
     }
 

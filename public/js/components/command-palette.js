@@ -160,16 +160,6 @@ export function initCommandPalette() {
                 badge: 'Vista',
                 keywords: 'ubicaciones salas puestos mapa laboratorios plano distribución',
                 action: () => { window.location.href = 'ubicaciones.html'; }
-            },
-            {
-                id: 'nav-mant',
-                grupo: 'Navegación Rápida',
-                titulo: 'Mantenimiento & Incidencias',
-                subtitulo: 'Bitácora técnica de fallas, reparaciones y diagnósticos',
-                icono: 'fa-screwdriver-wrench',
-                badge: 'Vista',
-                keywords: 'mantenimiento fallas incidencias soporte técnicos reparación tickets',
-                action: () => { window.location.href = 'mantenimientos.html'; }
             }
         ];
 
@@ -193,20 +183,15 @@ export function initCommandPalette() {
                 }
             },
             {
-                id: 'act-reportar-falla',
+                id: 'act-reubicar-equipo',
                 grupo: 'Acciones Rápidas',
-                titulo: 'Reportar Falla o Incidencia',
-                subtitulo: 'Crear ticket de reporte técnico para un equipo',
-                icono: 'fa-triangle-exclamation',
+                titulo: 'Reubicar Equipo en Mapa',
+                subtitulo: 'Cambiar de sala o puesto físico en plano interactivo',
+                icono: 'fa-arrows-up-down-left-right',
                 badge: 'Acción',
-                keywords: 'reportar falla incidencia problema avería mantenimiento ticket',
+                keywords: 'reubicar mover puesto sala transferir puesto fisico plano ubicaciones',
                 action: () => {
-                    const btn = document.getElementById('btn-reportar-incidencia');
-                    if (btn && window.location.pathname.includes('mantenimientos.html')) {
-                        btn.click();
-                    } else {
-                        window.location.href = 'mantenimientos.html?accion=nueva';
-                    }
+                    window.location.href = 'ubicaciones.html';
                 }
             },
             {

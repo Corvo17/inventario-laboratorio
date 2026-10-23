@@ -53,15 +53,6 @@
                 <span>Ubicaciones & Puestos</span>
             </a>
         </div>
-
-        <div class="nav-section">
-            <span class="nav-section-title">Operaciones</span>
-            <a href="mantenimientos.html" class="nav-link" id="nav-mantenimientos">
-                <i class="fa-solid fa-screwdriver-wrench"></i>
-                <span>Mantenimiento & Falla</span>
-                <span class="nav-counter alert" id="sidebar-mantenimiento-count" style="display: none;">0</span>
-            </a>
-        </div>
     </nav>
 
     <div class="sidebar-footer">
@@ -185,14 +176,6 @@
                         <span>Operativo</span>
                     </div>
                     <div class="legend-item">
-                        <span class="legend-dot falla"></span>
-                        <span>Con Falla</span>
-                    </div>
-                    <div class="legend-item">
-                        <span class="legend-dot mantenimiento"></span>
-                        <span>En Mantenimiento</span>
-                    </div>
-                    <div class="legend-item">
                         <span class="legend-dot prestamo"></span>
                         <span>En Préstamo</span>
                     </div>
@@ -258,10 +241,6 @@
             </div>
 
             <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                <button type="button" id="btn-resumen-reportar" class="btn btn-warning">
-                    <i class="fa-solid fa-triangle-exclamation"></i>
-                    <span>Reportar Falla</span>
-                </button>
                 <div style="display: flex; gap: 8px;">
                     <button type="button" id="btn-reubicar-equipo" class="btn btn-outline" title="Reubicar este activo a otra sala o puesto">
                         <i class="fa-solid fa-arrows-up-down-left-right"></i>

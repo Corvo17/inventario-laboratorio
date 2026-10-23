@@ -112,20 +112,19 @@ export function imprimirActaEquipo(equipo, mantenimientos = []) {
     const qrDataUrl = generarQrDataUrl(payloadQr, 130, 130);
 
     const filasHistorial = Array.isArray(mantenimientos) && mantenimientos.length > 0
-        ? mantenimientos.map(m => `
+        ? mantenimientos.map(p => `
             <tr>
-                <td style="white-space: nowrap;">${m.fecha_reporte ? m.fecha_reporte.split(' ')[0] : 'N/A'}</td>
-                <td><strong>${m.tipo || 'GENERAL'}</strong></td>
-                <td>${m.prioridad || 'MEDIA'}</td>
-                <td><strong>${m.estado_resultado || 'PENDIENTE'}</strong></td>
-                <td>${m.tecnico_responsable || 'Técnico Asignado'}</td>
-                <td>${m.titulo || ''}${m.diagnostico_tecnico ? ` — <em>${m.diagnostico_tecnico}</em>` : ''}</td>
+                <td style="white-space: nowrap;">${p.fecha_prestamo ? p.fecha_prestamo.split(' ')[0] : (p.fecha ? p.fecha.split(' ')[0] : 'N/A')}</td>
+                <td><strong>${p.solicitante_nombre || 'Docente / Solicitante'}</strong><br><small style="color: #666;">ID: ${p.solicitante_identificacion || 'N/A'}</small></td>
+                <td>${p.destino_uso || p.ubicacion || 'Área Académica'}</td>
+                <td><strong>${p.estado_prestamo === 'ACTIVO' ? 'PRÉSTAMO VIGENTE' : (p.estado || 'DEVUELTO')}</strong></td>
+                <td>${p.fecha_devolucion_real ? 'Devuelto el ' + p.fecha_devolucion_real.split(' ')[0] : (p.observaciones || p.descripcion || 'En custodia autorizada')}</td>
             </tr>
         `).join('')
         : `
             <tr>
-                <td colspan="6" style="text-align: center; color: #555; padding: 14px;">
-                    Sin incidencias ni intervenciones de mantenimiento registradas en la bitácora técnica oficial.
+                <td colspan="5" style="text-align: center; color: #555; padding: 14px;">
+                    Sin préstamos externos activos. Activo en custodia directa del laboratorio.
                 </td>
             </tr>
         `;
@@ -350,7 +349,7 @@ export function imprimirActaEquipo(equipo, mantenimientos = []) {
         </table>
 
         <!-- Historial de Mantenimientos e Incidencias -->
-        <div class="section-title">3. Trazabilidad Técnica e Historial de Mantenimiento</div>
+        <div class="section-title">3. Trazabilidad Patrimonial y Control de Préstamos</div>
         <table class="history-table">
             <thead>
                 <tr>
