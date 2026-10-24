@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión | LabInventario - Control Patrimonial</title>
+    <meta name="description"
+        content="Acceso seguro al Sistema de Gestión de Inventario, Control Patrimonial y Auditoría Física de Laboratorios.">
+
+    <!-- Anti-FOUC Theme Initialization Script -->
+    <script>
+        (function () {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = savedTheme ? savedTheme : (prefersDark ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+
+    <!-- Google Fonts Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- FontAwesome 6 Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+        integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <!-- Design Tokens & Component Styles -->
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/layout.css">
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--bg-app);
+            color: var(--text-primary);
+            font-family: var(--font-family, 'Inter', sans-serif);
+            position: relative;
+            box-sizing: border-box;
+        }
+
+        .login-topbar {
+            position: absolute;
+            top: 20px;
+            right: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 10;
+        }
+
+        .login-wrapper {
+            width: 100%;
+            max-width: 440px;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .login-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 32px 28px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .login-brand-header {
+            text-align: center;
+            margin-bottom: 26px;
+        }
+
+        .brand-icon-wrapper {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: var(--text-primary);
+            color: var(--bg-surface);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            margin-bottom: 14px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        }
+
+        .brand-title {
+            font-size: 1.375rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            color: var(--text-primary);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .brand-version-badge {
+            font-size: 0.6875rem;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: var(--bg-muted);
+            color: var(--text-muted);
+            border: 1px solid var(--border-color);
+        }
+
+        .brand-subtitle {
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+            margin-top: 6px;
+            font-weight: 500;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.8125rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text-primary);
+        }
+
+        .input-icon-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-icon-wrapper i.lead-icon {
+            position: absolute;
+            left: 14px;
+            color: var(--text-muted);
+            font-size: 14px;
+            pointer-events: none;
+        }
+
+        .input-icon-wrapper input {
+            width: 100%;
+            height: 42px;
+            padding: 0 40px 0 38px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            font-family: inherit;
+            box-sizing: border-box;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .input-icon-wrapper input:focus {
+            outline: none;
+            border-color: var(--text-primary);
+            box-shadow: 0 0 0 2px var(--bg-surface), 0 0 0 4px var(--border-focus, #18181b);
+        }
+
+        .toggle-password-btn {
+            position: absolute;
+            right: 12px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 6px;
+            font-size: 14px;
+            border-radius: 4px;
+        }
+
+        .toggle-password-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .demo-credentials-box {
+            background: var(--bg-muted);
+            border: 1px dashed var(--border-color);
+            border-radius: 10px;
+            padding: 14px;
+            margin-top: 24px;
+        }
+
+        .demo-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .demo-title {
+            font-size: 0.6875rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .demo-badge-thesis {
+            font-size: 0.625rem;
+            font-weight: 600;
+            background: rgba(16, 185, 129, 0.12);
+            color: #10b981;
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid rgba(16, 185, 129, 0.25);
+        }
+
+        .demo-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .demo-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 12px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.15s ease;
+            position: relative;
+        }
+
+        .demo-card:hover {
+            border-color: var(--text-primary);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px -2px rgba(0, 0, 0, 0.06);
+        }
+
+        .demo-card.active {
+            border-color: var(--text-primary);
+            box-shadow: 0 0 0 1.5px var(--text-primary);
+        }
+
+        .demo-role-badge {
+            display: inline-block;
+            font-size: 0.625rem;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-bottom: 4px;
+        }
+
+        .demo-card.admin .demo-role-badge {
+            background: var(--text-primary);
+            color: var(--bg-surface);
+        }
+
+        .demo-card.operador .demo-role-badge {
+            background: var(--bg-muted);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .demo-user-name {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .demo-desc {
+            font-size: 0.6875rem;
+            color: var(--text-muted);
+            display: block;
+            margin-top: 2px;
+        }
+
+        .login-footer-info {
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Control de Tema Flotante -->
+    <div class="login-topbar">
+        <button id="theme-toggle" class="btn-icon" aria-label="Cambiar tema de color"
+            title="Alternar Modo Claro / Oscuro"
+            style="width: 38px; height: 38px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-surface); cursor: pointer; color: var(--text-secondary); display: flex; align-items: center; justify-content: center;">
+            <i class="fa-solid fa-moon"></i>
+        </button>
+    </div>
+
+    <!-- Contenedor Principal de Login -->
+    <div class="login-wrapper">
+        <div class="login-card">
+
+            <!-- Branding Institucional -->
+            <div class="login-brand-header">
+                <div class="brand-icon-wrapper" style="overflow: hidden; padding: 0;">
+                    <img src="assets/icons/logo.png" alt="Logo LabInventario"
+                        style="width: 100%; height: 100%; object-fit: cover;"
+                        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div
+                        style="display: none; width: 100%; height: 100%; align-items: center; justify-content: center;">
+                        <i class="fa-solid fa-server"></i>
+                    </div>
+                </div>
+                <h1 class="brand-title">
+                    LabInventario
+                    <span class="brand-version-badge">v2.4</span>
+                </h1>
+                <div class="brand-subtitle">Control Patrimonial & Auditoría Física</div>
+            </div>
+
+            <!-- Formulario de Acceso -->
+            <form id="form-login" novalidate>
+
+                <div class="form-group">
+                    <label for="login-email" class="form-label">Correo Electrónico Institucional</label>
+                    <div class="input-icon-wrapper">
+                        <i class="fa-solid fa-envelope lead-icon"></i>
+                        <input type="email" id="login-email" name="email" placeholder="admin@lab.local" required
+                            autocomplete="email" autofocus>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <label for="login-password" class="form-label" style="margin-bottom: 0;">Contraseña de
+                            Seguridad</label>
+                    </div>
+                    <div class="input-icon-wrapper">
+                        <i class="fa-solid fa-lock lead-icon"></i>
+                        <input type="password" id="login-password" name="password" placeholder="••••••••" required
+                            autocomplete="current-password">
+                        <button type="button" id="btn-toggle-password" class="toggle-password-btn"
+                            aria-label="Mostrar u ocultar contraseña">
+                            <i class="fa-solid fa-eye" id="icon-toggle-password"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" id="btn-submit-login" class="btn btn-primary"
+                    style="width: 100%; height: 42px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; cursor: pointer;">
+                    <i class="fa-solid fa-arrow-right-to-bracket" id="icon-submit-login"></i>
+                    <span id="text-submit-login">Ingresar al Sistema</span>
+                </button>
+
+            </form>
+
+            <!-- Bloque de Credenciales de Demostración para Defensa de Tesis -->
+            <div class="demo-credentials-box">
+                <div class="demo-header">
+                    <span class="demo-title">
+                        <i class="fa-solid fa-flask"></i> Cuentas de Evaluación
+                    </span>
+                    <span class="demo-badge-thesis">Defensa de Grado</span>
+                </div>
+                <div class="demo-grid">
+                    <button type="button" id="demo-btn-admin" class="demo-card admin"
+                        title="Click para autocompletar credenciales de Administrador">
+                        <span class="demo-role-badge">ADMIN</span>
+                        <span class="demo-user-name">Coordinador</span>
+                        <span class="demo-desc">Control total & Backups</span>
+                    </button>
+                    <button type="button" id="demo-btn-operador" class="demo-card operador"
+                        title="Click para autocompletar credenciales de Operador">
+                        <span class="demo-role-badge">OPERADOR</span>
+                        <span class="demo-user-name">Custodio</span>
+                        <span class="demo-desc">Inventario & Préstamos</span>
+                    </button>
+                </div>
+                <div style="font-size: 0.6875rem; color: var(--text-muted); margin-top: 8px; text-align: center;">
+                    Haga clic en un perfil para autocompletar los campos de acceso.
+                </div>
+            </div>
+
+            <div class="login-footer-info">
+                Sistema Integral de Auditoría Patrimonial & Puestos Físicos
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Contenedor Toast -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Script de Inicialización y Controlador de Vista -->
+    <script type="module" src="js/views/login.js"></script>
+</body>
+
+</html>

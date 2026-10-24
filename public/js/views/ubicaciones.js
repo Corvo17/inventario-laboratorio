@@ -1,3 +1,4 @@
+import { verificarSesion, aplicarPermisosDOM } from '../services/auth.service.js';
 import { initThemeToggle } from '../components/theme-toggle.js';
 import { initCommandPalette } from '../components/command-palette.js';
 /**
@@ -16,7 +17,6 @@ import {
 } from '../services/api.service.js';
 import { Toast } from '../components/toast.js';
 import { renderStatusBadge } from '../components/status-badge.js';
-import { Toast } from '../components/toast.js';
 import { imprimirLoteQRSala } from '../components/reportes.js';
 
 // Elementos del DOM - KPIs
@@ -68,7 +68,9 @@ const selectReubicarPuesto = document.getElementById('select-reubicar-puesto');
 const btnConfirmarReubicar = document.getElementById('btn-confirmar-reubicar');
 
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    const user = await verificarSesion();
+    if (!user) return;
     actualizarFechaEncabezado();
     cargarMapaUbicaciones();
     configurarEventosModal();

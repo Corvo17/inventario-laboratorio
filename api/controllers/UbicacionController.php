@@ -81,4 +81,19 @@ class UbicacionController {
         }
     }
 
+
+    public static function stats(): void {
+        try {
+            $stats = Ubicacion::getStats();
+            Database::sendJson([
+                'success' => true,
+                'data'    => $stats
+            ], 200);
+        } catch (Throwable $e) {
+            Database::sendJson([
+                'success' => false,
+                'message' => 'Error al obtener estadisticas de ubicaciones: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

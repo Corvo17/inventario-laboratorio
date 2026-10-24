@@ -1,3 +1,4 @@
+import { verificarSesion, aplicarPermisosDOM } from '../services/auth.service.js';
 import { initThemeToggle } from '../components/theme-toggle.js';
 import { initCommandPalette } from '../components/command-palette.js';
 /**
@@ -250,7 +251,7 @@ function renderizarTabla(equipos) {
                         <button class="btn-icon btn-action-edit" title="Editar Activo" data-id="${equipo.id}">
                             <i class="fa-solid fa-pen-to-square"></i>
                         </button>
-                        <button class="btn-icon btn-action-baja text-danger" title="Dar de Baja / Desincorporar" data-id="${equipo.id}" ${esBaja ? 'disabled style="opacity: 0.35; cursor: not-allowed;"' : ''}>
+                        <button class="btn-icon btn-action-baja text-danger" data-role="ADMIN" title="Dar de Baja / Desincorporar" data-id="${equipo.id}" ${esBaja ? 'disabled style="opacity: 0.35; cursor: not-allowed;"' : ''}>
                             <i class="fa-solid fa-ban"></i>
                         </button>
                     </div>

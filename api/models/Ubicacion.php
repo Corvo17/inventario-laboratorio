@@ -268,4 +268,31 @@ class Ubicacion {
         }
     }
 
+
+    /**
+     * Obtiene metricas y estadisticas globales de salas y puestos
+     */
+    public static function getStats(): array {
+        $db = Database::getConnection();
+
+        $stmtSalas = $db->query('SELECT COUNT(*) FROM salas');
+        $totalSalas = (int)$stmtSalas->fetchColumn();
+
+        $stmtPuestos = $db->query('SELECT COUNT(*) FROM puestos');
+        $totalPuestos = (int)$stmtPuestos->fetchColumn();
+
+        $stmtOcupados = $db->query('SELECT COUNT(*) FROM equipos WHERE puesto_id IS NOT NULL');
+        $puestosOcupados = (int)$stmtOcupados->fetchColumn();
+
+        $puestosLibres = max(0, $totalPuestos - $puestosOcupados);
+        $tasaOcupacion = $totalPuestos > 0 ? round(($puestosOcupados / $totalPuestos) * 100, 1) : 0;
+
+        return [
+            'total_salas' => $totalSalas,
+            'total_puestos' => $totalPuestos,
+            'puestos_ocupados' => $puestosOcupados,
+            'puestos_libres' => $puestosLibres,
+            'tasa_ocupacion' => $tasaOcupacion
+        ];
+    }
 }

@@ -21,6 +21,8 @@ if ($method === 'GET') {
         UbicacionController::puestos();
     } elseif ($action === 'mapa-completo') {
         UbicacionController::mapaCompleto();
+    } elseif ($action === 'stats') {
+        UbicacionController::stats();
     } else {
         Database::sendJson([
             'success' => false,

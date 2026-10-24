@@ -13,10 +13,12 @@ CREATE DATABASE IF NOT EXISTS `lab_inventario` CHARACTER SET utf8mb4 COLLATE utf
 USE `lab_inventario`;
 
 -- 2. Eliminación de tablas previas si existen
+DROP TABLE IF EXISTS `prestamos`;
 DROP TABLE IF EXISTS `mantenimientos`;
 DROP TABLE IF EXISTS `equipos`;
 DROP TABLE IF EXISTS `puestos`;
 DROP TABLE IF EXISTS `salas`;
+DROP TABLE IF EXISTS `usuarios`;
 
 -- 3. Tabla: salas
 CREATE TABLE `salas` (
@@ -68,6 +70,39 @@ CREATE TABLE `equipos` (
   KEY `sala_id` (`sala_id`),
   CONSTRAINT `equipos_ibfk_1` FOREIGN KEY (`sala_id`) REFERENCES `salas` (`id`),
   CONSTRAINT `equipos_ibfk_2` FOREIGN KEY (`puesto_id`) REFERENCES `puestos` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- 5.1 Tabla: prestamos
+CREATE TABLE `prestamos` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `equipo_id` int(11) NOT NULL,
+  `solicitante_nombre` varchar(120) NOT NULL,
+  `solicitante_identificacion` varchar(50) NOT NULL,
+  `destino_uso` varchar(150) NOT NULL,
+  `fecha_prestamo` datetime NOT NULL DEFAULT current_timestamp(),
+  `fecha_devolucion_estimada` date DEFAULT NULL,
+  `fecha_devolucion_real` datetime DEFAULT NULL,
+  `estado_prestamo` enum('ACTIVO','DEVUELTO') NOT NULL DEFAULT 'ACTIVO',
+  `observaciones` text DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `equipo_id` (`equipo_id`),
+  KEY `estado_prestamo` (`estado_prestamo`),
+  CONSTRAINT `prestamos_ibfk_1` FOREIGN KEY (`equipo_id`) REFERENCES `equipos` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 5.2 Tabla: usuarios (Autenticación y Roles Jerárquicos)
+CREATE TABLE `usuarios` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `nombre` varchar(100) NOT NULL,
+  `email` varchar(120) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `rol` enum('ADMIN','OPERADOR') NOT NULL DEFAULT 'OPERADOR',
+  `activo` tinyint(1) NOT NULL DEFAULT 1,
+  `ultimo_acceso` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 6. Tabla: mantenimientos
@@ -124,5 +159,17 @@ INSERT INTO `equipos` (`id`, `codigo_patrimonial`, `numero_serie`, `categoria`, 
 INSERT INTO `mantenimientos` (`id`, `equipo_id`, `fecha_reporte`, `fecha_resolucion`, `tipo`, `prioridad`, `titulo`, `descripcion_falla`, `diagnostico_tecnico`, `acciones_realizadas`, `tecnico_responsable`, `estado_resultado`) VALUES
 (1, 3, '2026-09-22 13:30:00', NULL, 'CORRECTIVO', 'ALTA', 'Reinicios constantes en carga de trabajo', 'El equipo se apaga bruscamente al ejecutar software pesado.', 'Posible degradación de fuente de poder o pasta térmica seca.', NULL, 'Técnico de Turno', 'PENDIENTE'),
 (2, 4, '2026-09-23 18:15:00', NULL, 'PREVENTIVO', 'MEDIA', 'Limpieza semestral y cambio térmico', 'Exceso de polvo en rejillas y temperaturas elevadas.', 'Ventilador saturado de polvo.', 'Desensamble realizado, a la espera de pasta térmica.', 'Técnico de Turno', 'EN_CURSO');
+
+
+-- Inserción de Préstamos de Activos (2)
+INSERT INTO `prestamos` (`id`, `equipo_id`, `solicitante_nombre`, `solicitante_identificacion`, `destino_uso`, `fecha_prestamo`, `fecha_devolucion_estimada`, `fecha_devolucion_real`, `estado_prestamo`, `observaciones`) VALUES
+(1, 6, 'Prof. Carlos Mendoza', '14.582.910', 'Aula Magna / Defensa de Grado', '2026-09-24 09:00:00', '2026-09-25', '2026-10-16 15:31:05', 'DEVUELTO', 'Préstamo para proyecciones académicas y defensas.'),
+(2, 6, 'Prof. Carlos Mendoza', '14.582.910', 'Aula Magna / Defensa de Grado', '2026-10-16 15:31:05', '2026-10-25', NULL, 'ACTIVO', 'Préstamo renovado para proyecciones académicas y defensas de grado.');
+
+-- Inserción de Cuentas de Usuario Semilla (ADMIN vs OPERADOR)
+-- Clave Admin: Admin123* | Clave Operador: Operador123*
+INSERT INTO `usuarios` (`id`, `nombre`, `email`, `password`, `rol`, `activo`, `ultimo_acceso`, `created_at`) VALUES
+(1, 'Coordinador de Laboratorios', 'admin@lab.local', '$2y$10$BIZ5Vfjrl31E7tb2Y25mEeHumUPDdPXcCEtkxtnN1Fx6APApQlFl2', 'ADMIN', 1, NULL, '2026-10-23 22:45:00'),
+(2, 'Custodio Técnico', 'operador@lab.local', '$2y$10$GPWkguEhrXC5h5Lj9/uPc.bucNW5iU9YdrJTxVD.fiZPgw0zP1Qwq', 'OPERADOR', 1, NULL, '2026-10-23 22:45:00');
 
 SET FOREIGN_KEY_CHECKS = 1;

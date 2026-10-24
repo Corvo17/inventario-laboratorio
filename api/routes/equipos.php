@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../controllers/EquipoController.php';
+require_once __DIR__ . '/../controllers/AuthController.php';
 
 // Preflight CORS
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -29,6 +30,7 @@ if ($method === 'GET') {
     if ($action === 'actualizar') {
         EquipoController::update($id);
     } elseif ($action === 'dar-de-baja') {
+        AuthController::requireAdmin('Acción restringida: solo un Administrador puede autorizar la baja patrimonial de un activo.');
         EquipoController::darDeBaja($id);
     } elseif ($action === 'registrar-prestamo') {
         EquipoController::registrarPrestamo();

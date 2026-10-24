@@ -282,10 +282,6 @@ export async function obtenerMapaUbicaciones() {
 export async function actualizarBadgeSidebarMantenimiento() {
     // Desacoplado: Sistema enfocado exclusivamente en Inventario Patrimonial y Ubicaciones
     return;
-});
-    } else {
-        actualizarBadgeSidebarMantenimiento();
-    }
 }
 
 

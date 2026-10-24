@@ -1,3 +1,4 @@
+import { verificarSesion, aplicarPermisosDOM } from '../services/auth.service.js';
 import { initThemeToggle } from '../components/theme-toggle.js';
 import { initCommandPalette } from '../components/command-palette.js';
 import { obtenerMetricasDashboard } from '../services/api.service.js';
@@ -259,7 +260,9 @@ function renderizarTimelineMovimientos(movimientos) {
     `;
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    const user = await verificarSesion();
+    if (!user) return;
     cargarDashboard();
 
     const btnNuevo = document.getElementById('btn-header-nuevo-equipo');
