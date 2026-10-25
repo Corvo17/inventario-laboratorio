@@ -14,7 +14,6 @@ USE `lab_inventario`;
 
 -- 2. Eliminación de tablas previas si existen
 DROP TABLE IF EXISTS `prestamos`;
-DROP TABLE IF EXISTS `mantenimientos`;
 DROP TABLE IF EXISTS `equipos`;
 DROP TABLE IF EXISTS `puestos`;
 DROP TABLE IF EXISTS `salas`;
@@ -52,7 +51,7 @@ CREATE TABLE `equipos` (
   `categoria` enum('PC_ESCRITORIO','ALL_IN_ONE','MONITOR','NETWORKING','PROYECTOR','PERIFERICO','COMPONENTE_INTERNO') NOT NULL,
   `marca` varchar(50) NOT NULL,
   `modelo` varchar(100) NOT NULL,
-  `estado` enum('OPERATIVO','EN_MANTENIMIENTO','CON_FALLA','EN_PRESTAMO','DE_BAJA') DEFAULT 'OPERATIVO',
+  `estado` enum('OPERATIVO','EN_PRESTAMO','DE_BAJA') DEFAULT 'OPERATIVO',
   `sala_id` int(11) NOT NULL,
   `puesto_id` int(11) DEFAULT NULL,
   `cpu` varchar(100) DEFAULT NULL,
@@ -105,24 +104,7 @@ CREATE TABLE `usuarios` (
   UNIQUE KEY `email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 6. Tabla: mantenimientos
-CREATE TABLE `mantenimientos` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `equipo_id` int(11) NOT NULL,
-  `fecha_reporte` timestamp NOT NULL DEFAULT current_timestamp(),
-  `fecha_resolucion` timestamp NULL DEFAULT NULL,
-  `tipo` enum('PREVENTIVO','CORRECTIVO','CAMBIO_PIEZA','LIMPIEZA') NOT NULL,
-  `prioridad` enum('BAJA','MEDIA','ALTA','CRITICA') DEFAULT 'MEDIA',
-  `titulo` varchar(150) NOT NULL,
-  `descripcion_falla` text NOT NULL,
-  `diagnostico_tecnico` text DEFAULT NULL,
-  `acciones_realizadas` text DEFAULT NULL,
-  `tecnico_responsable` varchar(100) NOT NULL,
-  `estado_resultado` enum('PENDIENTE','EN_CURSO','RESUELTO','DERIVADO_A_BAJA') DEFAULT 'PENDIENTE',
-  PRIMARY KEY (`id`),
-  KEY `equipo_id` (`equipo_id`),
-  CONSTRAINT `mantenimientos_ibfk_1` FOREIGN KEY (`equipo_id`) REFERENCES `equipos` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 -- ==========================================================
 -- 7. Datos Iniciales (Seeders)
@@ -132,7 +114,7 @@ CREATE TABLE `mantenimientos` (
 INSERT INTO `salas` (`id`, `nombre`, `descripcion`, `capacidad_puestos`, `created_at`) VALUES
 (1, 'Laboratorio 1 - Programación', 'Sala para desarrollo de software', 20, '2026-09-24 16:54:30'),
 (2, 'Laboratorio 2 - Redes', 'Mesas de trabajo y racks de conectividad', 16, '2026-09-24 16:54:30'),
-(3, 'Taller de Soporte y Hardware', 'Área de diagnóstico y reparación técnica', 6, '2026-09-24 16:54:30'),
+(3, 'Laboratorio de Hardware', 'Área de diagnóstico y reparación técnica', 6, '2026-09-24 16:54:30'),
 (4, 'Depósito Central', 'Reserva de piezas y componentes para sustitución técnica', 0, '2026-09-24 16:54:30');
 
 -- Inserción de Puestos Físicos (7)
@@ -149,16 +131,14 @@ INSERT INTO `puestos` (`id`, `sala_id`, `codigo_puesto`, `fila`, `columna`, `cre
 INSERT INTO `equipos` (`id`, `codigo_patrimonial`, `numero_serie`, `categoria`, `marca`, `modelo`, `estado`, `sala_id`, `puesto_id`, `cpu`, `ram_gb`, `almacenamiento`, `ip_asignada`, `mac_address`, `fecha_ingreso`, `notas`, `created_at`) VALUES
 (1, 'PAT-PC-001', '5CD2348X1Q', 'PC_ESCRITORIO', 'HP', 'ProDesk 400 G6', 'OPERATIVO', 1, 1, 'Intel Core i5-10500', 16, '512 GB SSD NVMe', '192.168.10.21', 'A0:B3:CC:11:22:33', '2024-01-15', 'Equipo principal del puesto 1', '2026-09-24 16:54:30'),
 (2, 'PAT-PC-002', '5CD2348X2W', 'PC_ESCRITORIO', 'HP', 'ProDesk 400 G6', 'OPERATIVO', 1, 2, 'Intel Core i5-10500', 32, '512 GB SSD NVMe', '192.168.10.22', 'A0:B3:CC:11:22:34', '2024-01-15', 'Equipo asignado con 32GB RAM', '2026-09-24 16:54:30'),
-(3, 'PAT-PC-003', 'MXL1029384', 'PC_ESCRITORIO', 'Dell', 'OptiPlex 7080', 'CON_FALLA', 1, 3, 'Intel Core i7-10700', 16, '1 TB SSD SATA', '192.168.10.23', 'B8:27:EB:44:55:66', '2024-02-01', 'Presenta reinicios intermitentes en carga de trabajo', '2026-09-24 16:54:30'),
-(4, 'PAT-AIO-001', 'W8823190LK', 'ALL_IN_ONE', 'Lenovo', 'IdeaCentre AIO 3', 'EN_MANTENIMIENTO', 3, 7, 'AMD Ryzen 5 5500U', 8, '256 GB SSD NVMe', '192.168.10.80', 'FC:FB:FB:01:02:03', '2024-03-10', 'En taller para mantenimiento preventivo y limpieza', '2026-09-24 16:54:30'),
+(3, 'PAT-PC-003', 'MXL1029384', 'PC_ESCRITORIO', 'Dell', 'OptiPlex 7080', 'OPERATIVO', 1, 3, 'Intel Core i7-10700', 16, '1 TB SSD SATA', '192.168.10.23', 'B8:27:EB:44:55:66', '2024-02-01', 'Presenta reinicios intermitentes en carga de trabajo', '2026-09-24 16:54:30'),
+(4, 'PAT-AIO-001', 'W8823190LK', 'ALL_IN_ONE', 'Lenovo', 'IdeaCentre AIO 3', 'OPERATIVO', 3, 7, 'AMD Ryzen 5 5500U', 8, '256 GB SSD NVMe', '192.168.10.80', 'FC:FB:FB:01:02:03', '2024-03-10', 'En taller para mantenimiento preventivo y limpieza', '2026-09-24 16:54:30'),
 (5, 'PAT-SW-001', 'FOC18290Z9', 'NETWORKING', 'Cisco', 'Catalyst 2960-X', 'OPERATIVO', 2, NULL, NULL, NULL, NULL, '192.168.10.2', '00:1E:13:C2:A1:00', '2023-11-20', 'Switch principal Lab 2', '2026-09-24 16:54:30'),
 (6, 'PAT-PRY-001', 'V79F910023', 'PROYECTOR', 'Epson', 'PowerLite E20', 'EN_PRESTAMO', 1, NULL, NULL, NULL, NULL, NULL, NULL, '2024-01-10', 'En préstamo al departamento docente', '2026-09-24 16:54:30'),
 (7, 'PAT-REP-001', 'KVR32S22S8', 'COMPONENTE_INTERNO', 'Kingston', 'DDR4 3200MHz 8GB', 'OPERATIVO', 4, NULL, NULL, 8, NULL, NULL, NULL, '2024-05-12', 'Módulo de RAM de repuesto', '2026-09-24 16:54:30');
 
 -- Inserción de Mantenimientos / Incidencias (2)
-INSERT INTO `mantenimientos` (`id`, `equipo_id`, `fecha_reporte`, `fecha_resolucion`, `tipo`, `prioridad`, `titulo`, `descripcion_falla`, `diagnostico_tecnico`, `acciones_realizadas`, `tecnico_responsable`, `estado_resultado`) VALUES
-(1, 3, '2026-09-22 13:30:00', NULL, 'CORRECTIVO', 'ALTA', 'Reinicios constantes en carga de trabajo', 'El equipo se apaga bruscamente al ejecutar software pesado.', 'Posible degradación de fuente de poder o pasta térmica seca.', NULL, 'Técnico de Turno', 'PENDIENTE'),
-(2, 4, '2026-09-23 18:15:00', NULL, 'PREVENTIVO', 'MEDIA', 'Limpieza semestral y cambio térmico', 'Exceso de polvo en rejillas y temperaturas elevadas.', 'Ventilador saturado de polvo.', 'Desensamble realizado, a la espera de pasta térmica.', 'Técnico de Turno', 'EN_CURSO');
+
 
 
 -- Inserción de Préstamos de Activos (2)

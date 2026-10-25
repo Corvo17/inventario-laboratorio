@@ -58,7 +58,7 @@ CREATE TABLE `equipos` (
   `categoria` enum('PC_ESCRITORIO','ALL_IN_ONE','MONITOR','NETWORKING','PROYECTOR','PERIFERICO','COMPONENTE_INTERNO') NOT NULL,
   `marca` varchar(50) NOT NULL,
   `modelo` varchar(100) NOT NULL,
-  `estado` enum('OPERATIVO','EN_MANTENIMIENTO','CON_FALLA','EN_PRESTAMO','DE_BAJA') DEFAULT 'OPERATIVO',
+  `estado` enum('OPERATIVO','EN_PRESTAMO','DE_BAJA') DEFAULT 'OPERATIVO',
   `sala_id` int(11) NOT NULL,
   `puesto_id` int(11) DEFAULT NULL,
   `cpu` varchar(100) DEFAULT NULL,

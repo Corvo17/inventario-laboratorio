@@ -1,4 +1,4 @@
-import { verificarSesion, aplicarPermisosDOM } from '../services/auth.service.js';
+import { verificarSesion, aplicarPermisosDOM, actualizarSidebarUsuario, obtenerUsuarioActual } from '../services/auth.service.js';
 import { initThemeToggle } from '../components/theme-toggle.js';
 import { initCommandPalette } from '../components/command-palette.js';
 /**
@@ -12,6 +12,7 @@ import {
     obtenerSalas, 
     obtenerPuestosDisponibles, 
     registrarEquipo, 
+    actualizarEquipo,
     generarUrlQr,
     apiService,
     obtenerHojaVidaEquipo,
@@ -32,7 +33,7 @@ const filtroSala = document.getElementById('filtro-sala');
 const selectEstadoFiltro = document.getElementById('filtro-estado') || document.getElementById('select-estado') || document.getElementById('select-estado-filtro');
 
 // Modal: Alta de Equipo
-const modalRegistro = document.getElementById('modal-registro-equipo');
+const modalRegistro = document.getElementById('modal-nuevo-equipo') || document.getElementById('modal-registro-equipo');
 const btnNuevoEquipo = document.getElementById('btn-nuevo-equipo');
 const btnCerrarModal = document.getElementById('btn-cerrar-modal');
 const btnCancelarModal = document.getElementById('btn-cancelar-modal');
@@ -44,15 +45,16 @@ const btnGuardarEquipo = document.getElementById('btn-guardar-equipo');
 const btnGuardarTexto = document.getElementById('btn-guardar-texto');
 
 // Modal: Visualización e Impresión de QR
-const modalQr = document.getElementById('modal-qr-equipo');
+const modalQr = document.getElementById('modal-etiqueta-qr') || document.getElementById('modal-qr-equipo');
 const btnCerrarQr = document.getElementById('btn-cerrar-qr');
 const btnCancelarQr = document.getElementById('btn-cancelar-qr');
 const btnImprimirQr = document.getElementById('btn-imprimir-qr');
+const btnImprimirActaDirecta = document.getElementById('btn-imprimir-acta-directa');
 const qrCanvasWrapper = document.getElementById('qr-canvas-wrapper');
-const qrCodigoDisplay = document.getElementById('qr-codigo-display');
-const qrModeloDisplay = document.getElementById('qr-modelo-display');
-const qrSerialDisplay = document.getElementById('qr-serial-display');
-const qrSalaDisplay = document.getElementById('qr-sala-display');
+const qrCodigoDisplay = document.getElementById('qr-label-codigo') || document.getElementById('qr-codigo-display');
+const qrModeloDisplay = document.getElementById('qr-label-modelo') || document.getElementById('qr-modelo-display');
+const qrSerialDisplay = document.getElementById('qr-label-serial') || document.getElementById('qr-serial-display');
+const qrSalaDisplay = document.getElementById('qr-label-ubicacion') || document.getElementById('qr-sala-display');
 const qrPuestoDisplay = document.getElementById('qr-puesto-display');
 
 // Modal: Ficha Técnica Detallada
@@ -103,8 +105,8 @@ const formEditar = document.getElementById('form-editar-equipo');
 const btnCerrarEdit = document.getElementById('btn-cerrar-edit');
 const btnCancelarEdit = document.getElementById('btn-cancelar-edit');
 const alertEdit = document.getElementById('modal-edit-alert');
-const selectEditSala = document.getElementById('edit-sala');
-const selectEditPuesto = document.getElementById('edit-puesto');
+const selectEditSala = document.getElementById('edit-select-sala') || document.getElementById('edit-sala');
+const selectEditPuesto = document.getElementById('edit-select-puesto') || document.getElementById('edit-puesto');
 
 // Modal: Confirmación de Baja Lógica
 const modalBaja = document.getElementById('modal-confirmar-baja');
@@ -241,15 +243,21 @@ function renderizarTabla(equipos) {
                         <button class="btn-icon btn-action-view" title="Ver ficha técnica" data-id="${equipo.id}">
                             <i class="fa-solid fa-eye"></i>
                         </button>
-                        <button class="btn-icon btn-action-qr" title="Generar / Imprimir QR" data-codigo="${equipo.codigo_patrimonial}">
+                        <button class="btn-icon btn-action-qr" title="Generar / Imprimir QR" data-id="${equipo.id}" data-codigo="${equipo.codigo_patrimonial}">
                             <i class="fa-solid fa-qrcode"></i>
                         </button>
                         <button class="btn-icon btn-action-edit" title="Editar Activo" data-id="${equipo.id}">
                             <i class="fa-solid fa-pen-to-square"></i>
                         </button>
-                        <button class="btn-icon btn-action-baja text-danger" data-role="ADMIN" title="Dar de Baja / Desincorporar" data-id="${equipo.id}" ${esBaja ? 'disabled style="opacity: 0.35; cursor: not-allowed;"' : ''}>
-                            <i class="fa-solid fa-ban"></i>
-                        </button>
+                        ${esBaja ? `
+                            <button class="btn-icon btn-action-baja opacity-40 cursor-not-allowed" disabled title="Activo ya desincorporado" data-id="${equipo.id}" style="opacity: 0.4; cursor: not-allowed; pointer-events: none;">
+                                <i class="fa-solid fa-ban"></i>
+                            </button>
+                        ` : `
+                            <button class="btn-icon btn-action-baja text-danger" data-role="ADMIN" title="Dar de Baja / Desincorporar" data-id="${equipo.id}">
+                                <i class="fa-solid fa-ban"></i>
+                            </button>
+                        `}
                     </div>
                 </td>
             </tr>
@@ -264,30 +272,46 @@ function renderizarTabla(equipos) {
     // Delegación de Eventos en Filas
     document.querySelectorAll('.btn-action-qr').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const id = e.currentTarget.closest('tr').getAttribute('data-id');
+            const id = e.currentTarget.getAttribute('data-id') || e.currentTarget.closest('tr')?.getAttribute('data-id');
             const equipo = equiposCache.find(eq => String(eq.id) === String(id));
-            if (equipo) abrirModalQr(equipo);
+            if (equipo) {
+                abrirModalQr(equipo);
+            } else if (id) {
+                imprimirActaEquipo(id);
+            }
         });
     });
 
     document.querySelectorAll('.btn-action-view').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const id = e.currentTarget.getAttribute('data-id');
-            abrirModalDetalle(id);
+            const id = e.currentTarget.getAttribute('data-id') || e.currentTarget.closest('tr')?.getAttribute('data-id');
+            if (id) abrirModalDetalle(id);
         });
     });
 
     document.querySelectorAll('.btn-action-edit').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const id = e.currentTarget.getAttribute('data-id');
-            const equipo = equiposCache.find(eq => String(eq.id) === String(id));
-            if (equipo) abrirModalEditar(equipo);
+        btn.addEventListener('click', async (e) => {
+            const id = e.currentTarget.getAttribute('data-id') || e.currentTarget.closest('tr')?.getAttribute('data-id');
+            let equipo = equiposCache.find(eq => String(eq.id) === String(id));
+            if (equipo) {
+                await abrirModalEditar(equipo);
+            } else if (id) {
+                try {
+                    const res = await obtenerHojaVidaEquipo(id);
+                    if (res?.success && res.data?.equipo) {
+                        await abrirModalEditar(res.data.equipo);
+                    }
+                } catch (err) {
+                    Toast.error('Error', 'No se pudieron cargar los datos del equipo para edición.');
+                }
+            }
         });
     });
 
     document.querySelectorAll('.btn-action-baja').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const id = e.currentTarget.getAttribute('data-id');
+            if (btn.disabled) return;
+            const id = e.currentTarget.getAttribute('data-id') || e.currentTarget.closest('tr')?.getAttribute('data-id');
             const equipo = equiposCache.find(eq => String(eq.id) === String(id));
             if (equipo && equipo.estado !== 'DE_BAJA') {
                 abrirModalBaja(equipo);
@@ -296,9 +320,13 @@ function renderizarTabla(equipos) {
     });
 }
 
-/**
- * Carga el inventario aplicando los filtros activos
- */
+// Alias para interoperabilidad de carga
+export async function cargarEquipos() {
+    return await cargarInventario();
+}
+window.cargarEquipos = cargarInventario;
+window.cargarInventario = cargarInventario;
+
 async function cargarInventario() {
     renderSkeletonLoading();
     if (counterEquipos) {
@@ -448,40 +476,46 @@ function cerrarModalAlta() {
 
 function abrirModalQr(equipo) {
     if (!equipo || !modalQr) return;
+    equipoDetalleActual = equipo;
 
-    qrCodigoDisplay.textContent = equipo.codigo_patrimonial;
-    qrModeloDisplay.textContent = `${equipo.marca} ${equipo.modelo}`;
-    qrSerialDisplay.textContent = equipo.numero_serie || 'N/A';
-    qrSalaDisplay.textContent = equipo.sala_nombre || 'Sin sala fija';
-    qrPuestoDisplay.textContent = equipo.puesto_codigo || 'General';
+    if (qrCodigoDisplay) qrCodigoDisplay.textContent = equipo.codigo_patrimonial || 'PAT-000';
+    if (qrModeloDisplay) qrModeloDisplay.textContent = `${equipo.marca || ''} ${equipo.modelo || ''}`.trim() || 'Activo';
+    if (qrSerialDisplay) qrSerialDisplay.textContent = `S/N: ${equipo.numero_serie || 'N/A'}`;
+    const ubicacionStr = equipo.sala_nombre ? `${equipo.sala_nombre}${equipo.puesto_codigo ? ' - Puesto ' + equipo.puesto_codigo : ''}` : 'Sin sala asignada';
+    if (qrSalaDisplay) qrSalaDisplay.textContent = ubicacionStr;
+    if (qrPuestoDisplay) qrPuestoDisplay.textContent = equipo.puesto_codigo || 'General';
 
-    qrCanvasWrapper.innerHTML = '';
-
-    if (typeof QRCode !== 'undefined') {
-        const payloadQr = generarUrlQr(equipo.codigo_patrimonial);
-        new QRCode(qrCanvasWrapper, {
-            text: payloadQr,
-            width: 140,
-            height: 140,
-            colorDark: '#0f172a',
-            colorLight: '#ffffff',
-            correctLevel: QRCode.CorrectLevel.H
-        });
-    } else {
-        qrCanvasWrapper.innerHTML = `
-            <div style="font-size: 11px; color: var(--text-muted); text-align: center;">
-                <i class="fa-solid fa-qrcode" style="font-size: 40px; margin-bottom: 6px;"></i>
-                <div>${equipo.codigo_patrimonial}</div>
-            </div>
-        `;
+    if (qrCanvasWrapper) {
+        qrCanvasWrapper.innerHTML = '';
+        if (typeof QRCode !== 'undefined') {
+            const payloadQr = generarUrlQr(equipo.codigo_patrimonial);
+            new QRCode(qrCanvasWrapper, {
+                text: payloadQr,
+                width: 140,
+                height: 140,
+                colorDark: '#0f172a',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.H
+            });
+        } else {
+            qrCanvasWrapper.innerHTML = `
+                <div style="font-size: 11px; color: var(--text-muted); text-align: center;">
+                    <i class="fa-solid fa-qrcode" style="font-size: 40px; margin-bottom: 6px;"></i>
+                    <div>${equipo.codigo_patrimonial}</div>
+                </div>
+            `;
+        }
     }
 
     modalQr.classList.add('open');
+    modalQr.style.display = 'flex';
     document.body.style.overflow = 'hidden';
 }
 
 function cerrarModalQr() {
+    if (!modalQr) return;
     modalQr.classList.remove('open');
+    modalQr.style.display = 'none';
     document.body.style.overflow = '';
 }
 
@@ -680,39 +714,51 @@ function cerrarModalDetalle() {
 async function abrirModalEditar(equipo) {
     if (!modalEditar) return;
 
-    formEditar.reset();
+    if (formEditar) formEditar.reset();
     if (alertEdit) alertEdit.style.display = 'none';
 
-    document.getElementById('edit-equipo-id').value = equipo.id;
-    document.getElementById('edit-codigo').value = equipo.codigo_patrimonial || '';
-    document.getElementById('edit-serial').value = equipo.numero_serie || '';
-    document.getElementById('edit-marca').value = equipo.marca || '';
-    document.getElementById('edit-modelo').value = equipo.modelo || '';
-    document.getElementById('edit-categoria').value = equipo.categoria || 'PC_ESCRITORIO';
-    document.getElementById('edit-estado').value = equipo.estado || 'OPERATIVO';
-    document.getElementById('edit-fecha-ingreso').value = equipo.fecha_ingreso || '';
-    document.getElementById('edit-cpu').value = equipo.cpu || '';
-    document.getElementById('edit-ram').value = equipo.ram_gb || '';
-    document.getElementById('edit-disco').value = equipo.almacenamiento || '';
-    document.getElementById('edit-ip').value = equipo.ip_asignada || '';
-    document.getElementById('edit-mac').value = equipo.mac_address || '';
-    document.getElementById('edit-notas').value = equipo.notas || '';
+    const setVal = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.value = (val !== null && val !== undefined) ? val : '';
+    };
 
-    await cargarSalasEnModal(selectEditSala);
-    if (equipo.sala_id) {
-        selectEditSala.value = equipo.sala_id;
-        await actualizarPuestosPorSala(equipo.sala_id, selectEditPuesto, equipo.puesto_id);
-    } else {
-        selectEditPuesto.innerHTML = '<option value="">Sin sala asignada</option>';
-        selectEditPuesto.disabled = true;
+    setVal('edit-equipo-id', equipo.id);
+    setVal('edit-codigo', equipo.codigo_patrimonial);
+    setVal('edit-serial', equipo.numero_serie);
+    setVal('edit-marca', equipo.marca);
+    setVal('edit-modelo', equipo.modelo);
+    setVal('edit-categoria', equipo.categoria || 'PC_ESCRITORIO');
+    setVal('edit-estado', equipo.estado || 'OPERATIVO');
+    setVal('edit-fecha-ingreso', equipo.fecha_ingreso);
+    setVal('edit-cpu', equipo.cpu);
+    setVal('edit-ram', equipo.ram_gb);
+    setVal('edit-disco', equipo.almacenamiento);
+    setVal('edit-ip', equipo.ip_asignada);
+    setVal('edit-mac', equipo.mac_address);
+    setVal('edit-notas', equipo.notas);
+
+    if (selectEditSala) {
+        await cargarSalasEnModal(selectEditSala);
+        if (equipo.sala_id) {
+            selectEditSala.value = String(equipo.sala_id);
+            if (selectEditPuesto) {
+                await actualizarPuestosPorSala(equipo.sala_id, selectEditPuesto, equipo.puesto_id);
+            }
+        } else if (selectEditPuesto) {
+            selectEditPuesto.innerHTML = '<option value="">Sin sala asignada</option>';
+            selectEditPuesto.disabled = true;
+        }
     }
 
     modalEditar.classList.add('open');
+    modalEditar.style.display = 'flex';
     document.body.style.overflow = 'hidden';
 }
 
 function cerrarModalEditar() {
+    if (!modalEditar) return;
     modalEditar.classList.remove('open');
+    modalEditar.style.display = 'none';
     document.body.style.overflow = '';
 }
 
@@ -799,22 +845,44 @@ async function ejecutarDevolucion(equipoId, prestamoId = 0) {
 }
 
 
-document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Cargar inventario inicial envuelto en try/catch para evitar bloqueos
+async function inicializarVistaInventario() {
+    // 0. Sincronización inmediata del Usuario desde caché local (sin latencia de red)
+    try {
+        const cachedUser = obtenerUsuarioActual();
+        if (cachedUser) {
+            actualizarSidebarUsuario(cachedUser);
+            aplicarPermisosDOM(cachedUser);
+        }
+    } catch (e) {
+        console.warn('Error al sincronizar usuario local:', e);
+    }
+
+    // 1. Cargar inventario inmediatamente en la tabla
     try {
         await cargarInventario();
     } catch (err) {
         console.error('Error inicial al cargar inventario:', err);
     }
 
-    // 2. Poblar salas en el filtro
+    // 2. Verificación de sesión viva con el backend en segundo plano
+    try {
+        const freshUser = await verificarSesion();
+        if (freshUser) {
+            actualizarSidebarUsuario(freshUser);
+            aplicarPermisosDOM(freshUser);
+        }
+    } catch (e) {
+        console.warn('Verificación de sesión en segundo plano:', e);
+    }
+
+    // 3. Poblar salas en el filtro
     try {
         await poblarFiltroSalas();
     } catch (err) {
         console.error('Error inicial al poblar salas:', err);
     }
 
-    // 3. Listener reactivo para Filtro de Salas
+    // 4. Listener reactivo para Filtro de Salas
     if (filtroSala) {
         filtroSala.addEventListener('change', (e) => {
             const val = e.target.value;
@@ -893,7 +961,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // 7. Modal QR
+        // 7. Modal QR
     if (btnCerrarQr) btnCerrarQr.addEventListener('click', cerrarModalQr);
     if (btnCancelarQr) btnCancelarQr.addEventListener('click', cerrarModalQr);
     if (modalQr) {
@@ -905,6 +973,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (btnImprimirQr) {
         btnImprimirQr.addEventListener('click', () => {
             window.print();
+        });
+    }
+
+    if (btnImprimirActaDirecta) {
+        btnImprimirActaDirecta.addEventListener('click', () => {
+            if (equipoDetalleActual && equipoDetalleActual.id) {
+                imprimirActaEquipo(equipoDetalleActual.id);
+            } else {
+                Toast.warning('Atención', 'No hay datos cargados del activo.');
+            }
         });
     }
 
@@ -995,7 +1073,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-        if (formEditar) {
+    if (formEditar) {
         formEditar.addEventListener('submit', async (e) => {
             e.preventDefault();
             const btnSubmit = document.getElementById('btn-guardar-edit');
@@ -1014,8 +1092,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 categoria: document.getElementById('edit-categoria').value,
                 estado: document.getElementById('edit-estado').value,
                 fecha_ingreso: document.getElementById('edit-fecha-ingreso').value || null,
-                sala_id: document.getElementById('edit-sala').value || null,
-                puesto_id: document.getElementById('edit-puesto').value || null,
+                sala_id: selectEditSala ? selectEditSala.value : null,
+                puesto_id: selectEditPuesto && selectEditPuesto.value ? selectEditPuesto.value : null,
                 cpu: document.getElementById('edit-cpu').value.trim() || null,
                 ram_gb: document.getElementById('edit-ram').value || null,
                 almacenamiento: document.getElementById('edit-disco').value.trim() || null,
@@ -1025,29 +1103,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
 
             try {
-                const res = await fetch(`../api/routes/equipos.php?action=actualizar&id=${id}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                if (data.success) {
-                    Toast.success('Equipo Actualizado', 'La ficha patrimonial se guardó correctamente.');
+                const res = await actualizarEquipo(id, payload);
+                if (res && res.success) {
+                    Toast.success('Activo Actualizado', 'Los cambios en la ficha patrimonial han sido guardados.');
                     cerrarModalEditar();
-                    cargarInventario();
+                    await cargarInventario();
                 } else {
+                    const msg = res?.message || 'Error al actualizar equipo.';
                     if (alertEdit) {
-                        alertEdit.textContent = data.message || 'Error al actualizar.';
+                        alertEdit.textContent = msg;
                         alertEdit.style.display = 'block';
                     }
-                    Toast.error('Error al Actualizar', data.message || 'Error');
+                    Toast.error('Error al Actualizar', msg);
                 }
             } catch (err) {
                 if (alertEdit) {
-                    alertEdit.textContent = 'Error de conexión con el servidor.';
+                    alertEdit.textContent = err.message || 'Error de conexión con el servidor.';
                     alertEdit.style.display = 'block';
                 }
-                Toast.error('Error', err.message);
+                Toast.error('Error', err.message || 'Error de conexión.');
             } finally {
                 if (btnSubmit) {
                     btnSubmit.disabled = false;
@@ -1223,7 +1297,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             cargarInventario();
         }
     }
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', inicializarVistaInventario);
+} else {
+    inicializarVistaInventario();
+}
 
 // Inicializar Modo Oscuro / Claro
 initThemeToggle();
