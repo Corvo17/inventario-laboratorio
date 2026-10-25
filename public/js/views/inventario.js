@@ -271,13 +271,13 @@ function renderizarTabla(equipos) {
 
     // Delegación de Eventos en Filas
     document.querySelectorAll('.btn-action-qr').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', async (e) => {
             const id = e.currentTarget.getAttribute('data-id') || e.currentTarget.closest('tr')?.getAttribute('data-id');
             const equipo = equiposCache.find(eq => String(eq.id) === String(id));
             if (equipo) {
                 abrirModalQr(equipo);
             } else if (id) {
-                imprimirActaEquipo(id);
+                await imprimirActaEquipo(id);
             }
         });
     });
@@ -450,10 +450,17 @@ async function actualizarPuestosPorSala(salaId, targetSelectPuesto, selectedPues
 }
 
 async function abrirModalAlta() {
-    formNuevoEquipo.reset();
+    if (!modalRegistro) return;
+    if (formNuevoEquipo) formNuevoEquipo.reset();
     ocultarErrorModal();
-    selectPuesto.disabled = true;
-    selectPuesto.innerHTML = '<option value="">Selecciona primero una sala</option>';
+    if (btnGuardarEquipo) {
+        btnGuardarEquipo.disabled = false;
+        btnGuardarEquipo.innerHTML = 'Registrar Equipo';
+    }
+    if (selectPuesto) {
+        selectPuesto.disabled = true;
+        selectPuesto.innerHTML = '<option value="">Selecciona primero una sala</option>';
+    }
     
     const fechaInput = document.getElementById('input-fecha-ingreso');
     if (fechaInput) {
@@ -461,12 +468,25 @@ async function abrirModalAlta() {
     }
     
     await cargarSalasEnModal(selectSala);
+    modalRegistro.style.display = 'flex';
     modalRegistro.classList.add('open');
     document.body.style.overflow = 'hidden';
 }
 
 function cerrarModalAlta() {
+    if (!modalRegistro) return;
+    if (formNuevoEquipo) formNuevoEquipo.reset();
+    ocultarErrorModal();
+    if (btnGuardarEquipo) {
+        btnGuardarEquipo.disabled = false;
+        btnGuardarEquipo.innerHTML = 'Registrar Equipo';
+    }
+    if (selectPuesto) {
+        selectPuesto.disabled = true;
+        selectPuesto.innerHTML = '<option value="">Selecciona primero una sala</option>';
+    }
     modalRegistro.classList.remove('open');
+    modalRegistro.style.display = 'none';
     document.body.style.overflow = '';
 }
 
@@ -977,9 +997,9 @@ async function inicializarVistaInventario() {
     }
 
     if (btnImprimirActaDirecta) {
-        btnImprimirActaDirecta.addEventListener('click', () => {
-            if (equipoDetalleActual && equipoDetalleActual.id) {
-                imprimirActaEquipo(equipoDetalleActual.id);
+        btnImprimirActaDirecta.addEventListener('click', async () => {
+            if (equipoDetalleActual && (equipoDetalleActual.id || equipoDetalleActual.codigo_patrimonial)) {
+                await imprimirActaEquipo(equipoDetalleActual, equipoDetalleActual.historial_prestamos || []);
             } else {
                 Toast.warning('Atención', 'No hay datos cargados del activo.');
             }
@@ -1310,3 +1330,55 @@ initThemeToggle();
 
 // Inicializar Command Palette Global (Ctrl + K)
 initCommandPalette();
+
+    // Delegación universal para cierre de modales vía atributo data-modal-close
+    document.addEventListener('click', (e) => {
+        const closeBtn = e.target.closest('[data-modal-close]');
+        if (closeBtn) {
+            const modal = closeBtn.closest('.modal-backdrop');
+            if (modal) {
+                modal.classList.remove('open');
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+            }
+        }
+    });
+
+// Delegación universal para cierre de modales vía atributo data-modal-close
+document.addEventListener('click', (e) => {
+    const closeBtn = e.target.closest('[data-modal-close]');
+    if (closeBtn) {
+        const modal = closeBtn.closest('.modal-backdrop');
+        if (modal) {
+            if (modal.id === 'modal-nuevo-equipo' || modal.id === 'modal-registro-equipo') {
+                cerrarModalAlta();
+            } else if (modal.id === 'modal-editar-equipo') {
+                cerrarModalEditar();
+            } else if (modal.id === 'modal-confirmar-baja') {
+                cerrarModalBaja();
+            } else if (modal.id === 'modal-etiqueta-qr' || modal.id === 'modal-qr-equipo') {
+                cerrarModalQr();
+            } else if (modal.id === 'modal-detalle-equipo') {
+                cerrarModalDetalle();
+            } else if (modal.id === 'modal-prestamo-equipo') {
+                cerrarModalPrestamo();
+            } else {
+                modal.classList.remove('open');
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+            }
+        }
+    }
+});
+
+// Cierre accesible con tecla Escape
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        if (modalRegistro && modalRegistro.classList.contains('open')) cerrarModalAlta();
+        if (modalEditar && modalEditar.classList.contains('open')) cerrarModalEditar();
+        if (modalBaja && modalBaja.classList.contains('open')) cerrarModalBaja();
+        if (modalQr && modalQr.classList.contains('open')) cerrarModalQr();
+        if (modalDetalle && modalDetalle.classList.contains('open')) cerrarModalDetalle();
+        if (modalPrestamo && modalPrestamo.classList.contains('open')) cerrarModalPrestamo();
+    }
+});

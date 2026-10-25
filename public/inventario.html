@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Equipos & Activos - Sistema de Inventario Laboratorio</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="assets/icons/logo.png">
+    <link rel="apple-touch-icon" href="assets/icons/logo.png">
         <script>
         (function() {
             const savedTheme = localStorage.getItem('theme');
@@ -24,13 +27,14 @@
     <aside class="sidebar">
     <div class="sidebar-header">
         <div class="brand-logo-box">
-            <i class="fa-solid fa-server"></i>
+            <img src="assets/icons/logo.png" alt="Logo LabInventario" class="brand-logo-img"
+                onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';">
+            <i class="fa-solid fa-server" style="display: none; color: var(--text-primary); font-size: 14px;"></i>
         </div>
         <div class="brand-text-group">
             <span class="brand-name">LabInventario</span>
             <span class="brand-sub">Control de Sistemas</span>
         </div>
-        <span class="brand-badge">PROD</span>
     </div>
 
     <nav class="sidebar-nav">
@@ -61,8 +65,8 @@
                 <div class="user-avatar-badge">ADM</div>
                 <span class="status-dot-online" title="Conectado"></span>
             </div>
-            <div class="user-meta">
-                <span class="user-name">Administrador</span>
+            <div class="user-meta sidebar-user-info">
+                <span class="user-name sidebar-user-name">Administrador</span>
                 <span class="user-role">Superuser Lab</span>
             </div>
             <button class="sidebar-action-btn" title="Configuración de Sistema" aria-label="Ajustes">
@@ -82,10 +86,6 @@
                 <span class="breadcrumb-current">Equipos & Activos</span>
             </div>
                         <div class="topbar-right">
-                <div class="system-badge">
-                    <span class="system-badge-dot"></span>
-                    <span>Base de Datos Online</span>
-                </div>
                 <button id="cmd-palette-trigger" class="topbar-search-trigger" title="Buscar en todo el sistema (Ctrl + K)">
                     <i class="fa-solid fa-magnifying-glass"></i>
                     <span class="search-placeholder-text">Buscar activos, salas, comandos...</span>
@@ -97,7 +97,7 @@
             </div>
         </header>
 
-                <main class="content-area">
+                <main class="content-area main-content">
             <!-- Encabezado de Página Estandarizado -->
             <div class="page-header">
                 <div class="page-header-content">
@@ -285,8 +285,8 @@
                 </div>
 
                 <div class="modal-footer">
-                    <button type="button" id="btn-cancelar-modal" class="btn btn-outline">Cancelar</button>
-                    <button type="submit" id="btn-guardar-equipo" class="btn btn-primary"><i class="fa-solid fa-check"></i><span>Guardar Activo</span></button>
+                    <button type="button" id="btn-cancelar-modal" class="btn btn-outline" data-modal-close>Cancelar</button>
+                    <button type="submit" id="btn-guardar-equipo" class="btn btn-primary">Registrar Equipo</button>
                 </div>
             </form>
         </div>
@@ -423,8 +423,8 @@
                 </div>
 
                 <div class="modal-footer">
-                    <button type="button" id="btn-cancelar-edit" class="btn btn-outline">Cancelar</button>
-                    <button type="submit" id="btn-guardar-edit" class="btn btn-primary"><i class="fa-solid fa-check"></i><span>Guardar Cambios</span></button>
+                    <button type="button" id="btn-cancelar-edit" class="btn btn-outline" data-modal-close>Cancelar</button>
+                    <button type="submit" id="btn-guardar-edit" class="btn btn-primary">Guardar Cambios</button>
                 </div>
             </form>
         </div>

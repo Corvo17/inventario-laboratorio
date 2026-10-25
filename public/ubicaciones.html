@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ubicaciones & Puestos Físicos - LabInventario</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="assets/icons/logo.png">
+    <link rel="apple-touch-icon" href="assets/icons/logo.png">
         <script>
         (function() {
             const savedTheme = localStorage.getItem('theme');
@@ -24,13 +27,14 @@
     <aside class="sidebar">
     <div class="sidebar-header">
         <div class="brand-logo-box">
-            <i class="fa-solid fa-server"></i>
+            <img src="assets/icons/logo.png" alt="Logo LabInventario" class="brand-logo-img"
+                onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';">
+            <i class="fa-solid fa-server" style="display: none; color: var(--text-primary); font-size: 14px;"></i>
         </div>
         <div class="brand-text-group">
             <span class="brand-name">LabInventario</span>
             <span class="brand-sub">Control de Sistemas</span>
         </div>
-        <span class="brand-badge">PROD</span>
     </div>
 
     <nav class="sidebar-nav">
@@ -61,8 +65,8 @@
                 <div class="user-avatar-badge">ADM</div>
                 <span class="status-dot-online" title="Conectado"></span>
             </div>
-            <div class="user-meta">
-                <span class="user-name">Administrador</span>
+            <div class="user-meta sidebar-user-info">
+                <span class="user-name sidebar-user-name">Administrador</span>
                 <span class="user-role">Superuser Lab</span>
             </div>
             <button class="sidebar-action-btn" title="Configuración de Sistema" aria-label="Ajustes">
@@ -83,10 +87,6 @@
                 <span class="breadcrumb-current">Ubicaciones & Puestos</span>
             </div>
                         <div class="topbar-right">
-                <div class="system-badge">
-                    <span class="system-badge-dot"></span>
-                    <span>Base de Datos Online</span>
-                </div>
                 <button id="cmd-palette-trigger" class="topbar-search-trigger" title="Buscar en todo el sistema (Ctrl + K)">
                     <i class="fa-solid fa-magnifying-glass"></i>
                     <span class="search-placeholder-text">Buscar activos, salas, comandos...</span>
@@ -99,12 +99,17 @@
         </header>
 
         <!-- Área Principal de Contenido -->
-        <main class="content-area">
+        <main class="content-area main-content">
             <!-- Encabezado de Página Estandarizado -->
-                        <div class="page-header">
+            <div class="page-header">
                 <div class="page-header-content">
                     <h1>Mapa de Ubicaciones & Puestos Físicos</h1>
                     <p>Monitoreo en tiempo real de ocupación y estado operativo en cada laboratorio.</p>
+                </div>
+                <div class="page-header-actions">
+                    <button id="btn-gestionar-salas" class="btn btn-outline" data-role="ADMIN">
+                        <i class="fa-solid fa-layer-group"></i> Administrar Espacios
+                    </button>
                 </div>
             </div>
 
@@ -381,6 +386,111 @@
 
             <div class="modal-footer" style="display: flex; justify-content: flex-end;">
                 <button type="button" id="btn-cancelar-asignar-puesto" class="btn btn-secondary">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal: Administrar Espacios y Puestos (#modal-gestion-salas) -->
+    <div id="modal-gestion-salas" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-salas-title" style="display: none;">
+        <div class="modal-card" style="max-width: 580px;">
+            <div class="modal-header">
+                <div>
+                    <h3 id="modal-salas-title" class="modal-title">Administración de Espacios y Puestos</h3>
+                    <p class="modal-description">Crea nuevas salas o ajusta la cantidad de puestos físicos por laboratorio.</p>
+                </div>
+                <button type="button" id="btn-cerrar-modal-salas" class="btn-icon" data-modal-close aria-label="Cerrar modal">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="modal-body" style="padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 1.25rem;">
+                <!-- Tab Navigation Buttons -->
+                <div class="tabs-header">
+                    <button type="button" id="tab-btn-nueva-sala" class="tab-btn active">
+                        <i class="fa-solid fa-door-open"></i> Nueva Sala / Laboratorio
+                    </button>
+                    <button type="button" id="tab-btn-ajustar-puestos" class="tab-btn">
+                        <i class="fa-solid fa-chair"></i> Ajuste de Puestos Físicos
+                    </button>
+                </div>
+
+                <!-- Pestaña 1: Nueva Sala / Laboratorio -->
+                <div id="tab-panel-nueva-sala" class="tab-panel">
+                    <form id="form-nueva-sala" style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="form-group">
+                            <label for="input-sala-nombre" class="form-label required">Nombre de la Sala / Laboratorio</label>
+                            <input type="text" id="input-sala-nombre" name="nombre" class="form-input" placeholder="Ej: Laboratorio 3 - Redes Avanzadas" required>
+                        </div>
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label for="input-sala-descripcion" class="form-label">Ubicación / Edificio</label>
+                                <input type="text" id="input-sala-descripcion" name="descripcion" class="form-input" placeholder="Ej: Edificio B, Piso 2">
+                            </div>
+                            <div class="form-group">
+                                <label for="input-sala-capacidad" class="form-label required">Capacidad de Puestos</label>
+                                <input type="number" id="input-sala-capacidad" name="capacidad_puestos" class="form-input" min="0" max="100" placeholder="Ej: 20" required>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 0.5rem;">
+                            <button type="button" class="btn btn-outline" data-modal-close>Cancelar</button>
+                            <button type="submit" id="btn-guardar-nueva-sala" class="btn btn-primary">
+                                <i class="fa-solid fa-plus"></i>
+                                <span>Crear Sala</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Pestaña 2: Ajuste de Puestos Físicos -->
+                <div id="tab-panel-ajustar-puestos" class="tab-panel" style="display: none;">
+                    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                        <div class="form-group">
+                            <label for="select-gestion-sala" class="form-label required">Selecciona el Laboratorio o Sala</label>
+                            <select id="select-gestion-sala" class="form-select" required>
+                                <option value="">Cargando laboratorios...</option>
+                            </select>
+                        </div>
+
+                        <!-- Resumen y Acción Agregar Puesto -->
+                        <div id="info-puestos-sala" style="padding: 12px 14px; background: var(--bg-muted); border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <span style="font-size: 11px; text-transform: uppercase; font-weight: 600; color: var(--text-muted);">Puestos Actuales:</span>
+                                <div id="lbl-total-puestos-sala" style="font-size: 16px; font-weight: 700; color: var(--text-primary); margin-top: 2px;">0 puestos</div>
+                            </div>
+                            <div>
+                                <button type="button" id="btn-agregar-puesto-accion" class="btn btn-primary btn-sm" title="Crear siguiente puesto en la sala">
+                                    <i class="fa-solid fa-plus"></i>
+                                    <span>Agregar Puesto</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Sección de Retiro de Puesto -->
+                        <div style="border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                            <label for="select-retirar-puesto" class="form-label" style="font-weight: 600;">
+                                <i class="fa-solid fa-trash-can" style="margin-right: 4px; color: var(--color-danger, #ef4444);"></i> Retirar Puesto Físico Libre
+                            </label>
+                            <div style="display: flex; gap: 8px;">
+                                <select id="select-retirar-puesto" class="form-select" style="flex: 1;">
+                                    <option value="">Selecciona un puesto libre...</option>
+                                </select>
+                                <button type="button" id="btn-retirar-puesto-accion" class="btn btn-danger btn-sm" style="white-space: nowrap;">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                    <span>Retirar Puesto</span>
+                                </button>
+                            </div>
+                            <span style="font-size: 11px; color: var(--text-muted); margin-top: 4px; display: block;">
+                                Solo se pueden retirar puestos libres sin equipos asociados.
+                            </span>
+                        </div>
+
+                        <div style="display: flex; justify-content: flex-end; margin-top: 0.5rem;">
+                            <button type="button" class="btn btn-outline" data-modal-close>Cerrar</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

@@ -1,3 +1,4 @@
+import { obtenerHojaVidaEquipo, obtenerDetalleEquipo } from '../services/api.service.js';
 /**
  * Módulo de Exportación y Reportes Oficiales
  * Sistema de Inventario de Laboratorios de Cómputo (LabInventario)
@@ -94,8 +95,37 @@ export function exportarTablaCSV(nombreArchivo, encabezados, filas) {
  * @param {Object} equipo - Datos completos del equipo
  * @param {Array<Object>} mantenimientos - Historial técnico asociado
  */
-export function imprimirActaEquipo(equipo, mantenimientos = []) {
-    if (!equipo) return;
+export async function imprimirActaEquipo(param, historialParam = null) {
+    if (!param) return;
+
+    let equipo = param;
+    let mantenimientos = historialParam || [];
+
+    // Si recibe un ID (numérico o string) o un objeto sin datos patrimoniales completos:
+    if (typeof param === 'number' || typeof param === 'string' || (param && typeof param === 'object' && !param.codigo_patrimonial && param.id)) {
+        const id = typeof param === 'object' ? param.id : param;
+        try {
+            const res = await obtenerHojaVidaEquipo(id);
+            if (res && res.success && res.data) {
+                equipo = res.data.equipo || {};
+                mantenimientos = res.data.historial_prestamos || [];
+            } else {
+                const resDet = await obtenerDetalleEquipo(id);
+                if (resDet && resDet.success && resDet.data) {
+                    equipo = resDet.data;
+                }
+            }
+        } catch (e) {
+            console.warn('Error al obtener datos completos del equipo para el acta:', e);
+        }
+    } else if (equipo && (!mantenimientos || mantenimientos.length === 0) && equipo.historial_prestamos) {
+        mantenimientos = equipo.historial_prestamos;
+    }
+
+    if (!equipo || (!equipo.codigo_patrimonial && !equipo.id)) {
+        console.error('imprimirActaEquipo: No se encontró información válida del activo.');
+        return;
+    }
 
     const fechaHoy = new Date().toLocaleDateString('es-ES', {
         day: '2-digit',
@@ -107,8 +137,9 @@ export function imprimirActaEquipo(equipo, mantenimientos = []) {
         minute: '2-digit'
     });
 
-    const codigoDoc = `ACTA-INV-${equipo.codigo_patrimonial || '000'}-${new Date().getFullYear()}`;
-    const payloadQr = `LAB-INV-${equipo.codigo_patrimonial}`;
+    const codPatrimonial = equipo.codigo_patrimonial || '000';
+    const codigoDoc = `ACTA-INV-${codPatrimonial}-${new Date().getFullYear()}`;
+    const payloadQr = `LAB-INV-${codPatrimonial}`;
     const qrDataUrl = generarQrDataUrl(payloadQr, 130, 130);
 
     const filasHistorial = Array.isArray(mantenimientos) && mantenimientos.length > 0
@@ -133,7 +164,7 @@ export function imprimirActaEquipo(equipo, mantenimientos = []) {
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>${codigoDoc} - ${equipo.codigo_patrimonial}</title>
+    <title>${codigoDoc} - ${codPatrimonial}</title>
     <style>
         @page {
             size: A4 portrait;
@@ -294,8 +325,8 @@ export function imprimirActaEquipo(equipo, mantenimientos = []) {
                 <th>Código Patrimonial:</th>
                 <td><span class="code-highlight">${equipo.codigo_patrimonial || 'N/A'}</span></td>
                 <td rowspan="4" class="qr-box">
-                    <img src="${qrDataUrl}" alt="QR ${equipo.codigo_patrimonial}">
-                    <div style="font-size: 8pt; font-family: monospace; font-weight: bold;">${equipo.codigo_patrimonial}</div>
+                    <img src="${qrDataUrl}" alt="QR ${codPatrimonial}">
+                    <div style="font-size: 8pt; font-family: monospace; font-weight: bold;">${codPatrimonial}</div>
                 </td>
             </tr>
             <tr>
@@ -402,13 +433,6 @@ export function imprimirActaEquipo(equipo, mantenimientos = []) {
     }
 }
 
-/**
- * Abre una ventana con una cuadrícula de etiquetas adhesivas QR para imprimir por sala.
- * Grilla de 3 columnas con bordes punteados de recorte y tipografía de alta fidelidad.
- * 
- * @param {string} salaNombre - Nombre de la sala
- * @param {Array<Object>} equiposSala - Lista de equipos asignados a la sala
- */
 export function imprimirLoteQRSala(salaNombre, equiposSala) {
     if (!Array.isArray(equiposSala) || equiposSala.length === 0) {
         alert('No se encontraron equipos en esta sala para generar etiquetas.');

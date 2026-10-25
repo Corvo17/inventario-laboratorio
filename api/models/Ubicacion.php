@@ -295,4 +295,136 @@ class Ubicacion {
             'tasa_ocupacion' => $tasaOcupacion
         ];
     }
+
+    /**
+     * Crea una nueva sala / laboratorio
+     */
+    public static function crearSala(string $nombre, ?string $descripcion = null, int $capacidad = 0): int {
+        $db = Database::getConnection();
+        $stmt = $db->prepare("INSERT INTO salas (nombre, descripcion, capacidad_puestos) VALUES (:nombre, :descripcion, :capacidad)");
+        $stmt->execute([
+            ':nombre'      => trim($nombre),
+            ':descripcion' => $descripcion ? trim($descripcion) : null,
+            ':capacidad'   => max(0, $capacidad)
+        ]);
+        return (int)$db->lastInsertId();
+    }
+
+    /**
+     * Agrega el siguiente puesto físico a una sala con código autogenerado
+     */
+    public static function agregarPuesto(int $sala_id): array {
+        $db = Database::getConnection();
+
+        // 1. Validar que la sala exista
+        $stmtSala = $db->prepare("SELECT id, nombre FROM salas WHERE id = :id");
+        $stmtSala->execute([':id' => $sala_id]);
+        $sala = $stmtSala->fetch(PDO::FETCH_ASSOC);
+        if (!$sala) {
+            throw new RuntimeException("La sala especificada no existe.", 404);
+        }
+
+        // 2. Obtener puestos existentes para determinar prefijo y correlativo
+        $stmtPuestos = $db->prepare("SELECT id, codigo_puesto, fila, columna FROM puestos WHERE sala_id = :sala_id ORDER BY id ASC");
+        $stmtPuestos->execute([':sala_id' => $sala_id]);
+        $puestos = $stmtPuestos->fetchAll(PDO::FETCH_ASSOC);
+
+        $prefijo = '';
+        $maxNum = 0;
+        $padding = 2;
+
+        if (!empty($puestos)) {
+            foreach ($puestos as $p) {
+                if (preg_match('/^(.*-P)(\d+)$/i', $p['codigo_puesto'], $m)) {
+                    $prefijo = $m[1];
+                    $num = (int)$m[2];
+                    if ($num > $maxNum) {
+                        $maxNum = $num;
+                        $padding = strlen($m[2]);
+                    }
+                } elseif (preg_match('/^(.*)(\d+)$/', $p['codigo_puesto'], $m)) {
+                    if (empty($prefijo)) $prefijo = $m[1];
+                    $num = (int)$m[2];
+                    if ($num > $maxNum) {
+                        $maxNum = $num;
+                        $padding = strlen($m[2]);
+                    }
+                }
+            }
+        }
+
+        if (empty($prefijo)) {
+            if (preg_match('/(?:lab(?:oratorio)?)\s*(\d+)/i', $sala['nombre'], $m)) {
+                $prefijo = "LAB{$m[1]}-P";
+            } else {
+                $prefijo = "LAB{$sala_id}-P";
+            }
+            $maxNum = count($puestos);
+        }
+
+        // 3. Generar siguiente código único garantizado
+        $siguienteNum = $maxNum + 1;
+        do {
+            $codigoPuesto = sprintf("%s%0{$padding}d", $prefijo, $siguienteNum);
+            $check = $db->prepare("SELECT COUNT(*) FROM puestos WHERE codigo_puesto = :codigo");
+            $check->execute([':codigo' => $codigoPuesto]);
+            $existe = (int)$check->fetchColumn() > 0;
+            if ($existe) {
+                $siguienteNum++;
+            }
+        } while ($existe);
+
+        // 4. Calcular coordenadas de cuadrícula (5 puestos por fila)
+        $count = count($puestos);
+        $columna = ($count % 5) + 1;
+        $fila = intdiv($count, 5) + 1;
+
+        $stmtInsert = $db->prepare("INSERT INTO puestos (sala_id, codigo_puesto, fila, columna) VALUES (:sala_id, :codigo, :fila, :columna)");
+        $stmtInsert->execute([
+            ':sala_id' => $sala_id,
+            ':codigo'  => $codigoPuesto,
+            ':fila'    => $fila,
+            ':columna' => $columna
+        ]);
+
+        $nuevoId = (int)$db->lastInsertId();
+
+        return [
+            'id'            => $nuevoId,
+            'sala_id'       => $sala_id,
+            'codigo_puesto' => $codigoPuesto,
+            'fila'          => $fila,
+            'columna'       => $columna
+        ];
+    }
+
+    /**
+     * Elimina un puesto físico solo si no tiene ningún activo asociado
+     */
+    public static function eliminarPuesto(int $puesto_id): bool {
+        $db = Database::getConnection();
+
+        // 1. Verificar existencia del puesto
+        $stmtPuesto = $db->prepare("SELECT id, codigo_puesto FROM puestos WHERE id = :id");
+        $stmtPuesto->execute([':id' => $puesto_id]);
+        $puesto = $stmtPuesto->fetch(PDO::FETCH_ASSOC);
+        if (!$puesto) {
+            throw new RuntimeException("El puesto especificado no existe.", 404);
+        }
+
+        // 2. Validar que no tenga equipos asignados
+        $stmtOcupado = $db->prepare("SELECT COUNT(*) FROM equipos WHERE puesto_id = :puesto_id");
+        $stmtOcupado->execute([':puesto_id' => $puesto_id]);
+        $totalEquipos = (int)$stmtOcupado->fetchColumn();
+
+        if ($totalEquipos > 0) {
+            throw new RuntimeException("El puesto está ocupado por un activo.", 409);
+        }
+
+        // 3. Eliminar puesto
+        $stmtDel = $db->prepare("DELETE FROM puestos WHERE id = :id");
+        $stmtDel->execute([':id' => $puesto_id]);
+
+        return true;
+    }
 }

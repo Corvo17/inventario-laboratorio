@@ -1,6 +1,6 @@
 /**
  * Servicio API para consumo de endpoints PHP
- * LabInventario v1.0
+ * LabInventario - Servicio de API
  */
 
 export const apiService = {
@@ -291,6 +291,67 @@ export async function reubicarEquipo(payload) {
         return json;
     } catch (error) {
         console.error('Error al reubicar equipo:', error);
+        throw error;
+    }
+}
+
+/**
+ * Crea una nueva sala / laboratorio (Rol ADMIN)
+ */
+export async function crearSala(data) {
+    try {
+        const response = await fetch('../api/routes/ubicaciones.php?action=crear-sala', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const json = await response.json();
+        if (!response.ok) throw new Error(json.message || `HTTP ${response.status}`);
+        return json;
+    } catch (error) {
+        console.error('Error al crear sala:', error);
+        throw error;
+    }
+}
+
+/**
+ * Agrega el siguiente puesto físico a una sala (Rol ADMIN)
+ */
+export async function agregarPuesto(salaId) {
+    try {
+        const response = await fetch('../api/routes/ubicaciones.php?action=agregar-puesto', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ sala_id: parseInt(salaId, 10) })
+        });
+        const json = await response.json();
+        if (!response.ok) throw new Error(json.message || `HTTP ${response.status}`);
+        return json;
+    } catch (error) {
+        console.error('Error al agregar puesto:', error);
+        throw error;
+    }
+}
+
+/**
+ * Elimina un puesto físico libre (Rol ADMIN)
+ */
+export async function eliminarPuesto(puestoId) {
+    try {
+        const response = await fetch('../api/routes/ubicaciones.php?action=eliminar-puesto', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ puesto_id: parseInt(puestoId, 10) })
+        });
+        const json = await response.json();
+        if (!response.ok) {
+            const err = new Error(json.message || `HTTP ${response.status}`);
+            err.status = response.status;
+            throw err;
+        }
+        return json;
+    } catch (error) {
+        console.error('Error al eliminar puesto:', error);
         throw error;
     }
 }

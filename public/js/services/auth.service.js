@@ -232,8 +232,8 @@ export function inyectarModalConfiguracion(user = null) {
                     <h4 style="font-size: 0.8125rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin: 0 0 10px 0;">Información del Entorno</h4>
                     <div style="background: var(--bg-muted); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.8125rem;">
                         <div>
-                            <span style="color: var(--text-muted); display: block; font-size: 0.75rem;">Versión del Software</span>
-                            <strong style="color: var(--text-primary);">v2.4.0 (Final Release)</strong>
+                            <span style="color: var(--text-muted); display: block; font-size: 0.75rem;">Estado del Sistema</span>
+                            <strong style="color: var(--text-primary);">Operativo</strong>
                         </div>
                         <div>
                             <span style="color: var(--text-muted); display: block; font-size: 0.75rem;">Motor de Base de Datos</span>

@@ -14,7 +14,10 @@ import {
     obtenerSalas, 
     obtenerPuestos, 
     obtenerEquipos,
-    reubicarEquipo 
+    reubicarEquipo,
+    crearSala,
+    agregarPuesto,
+    eliminarPuesto
 } from '../services/api.service.js';
 import { Toast } from '../components/toast.js';
 import { renderStatusBadge } from '../components/status-badge.js';
@@ -69,6 +72,23 @@ const selectEquipoDeposito = document.getElementById('select-equipo-deposito');
 const btnConfirmarAsignarDeposito = document.getElementById('btn-confirmar-asignar-deposito');
 const btnIrCrearNuevoPuesto = document.getElementById('btn-ir-crear-nuevo-puesto');
 
+
+// Elementos para Gestión de Espacios y Puestos (ADMIN)
+const btnGestionarSalas = document.getElementById('btn-gestionar-salas');
+const modalGestionSalas = document.getElementById('modal-gestion-salas');
+const btnCerrarModalSalas = document.getElementById('btn-cerrar-modal-salas');
+const tabBtnNuevaSala = document.getElementById('tab-btn-nueva-sala');
+const tabBtnAjustarPuestos = document.getElementById('tab-btn-ajustar-puestos');
+const tabPanelNuevaSala = document.getElementById('tab-panel-nueva-sala');
+const tabPanelAjustarPuestos = document.getElementById('tab-panel-ajustar-puestos');
+const formNuevaSala = document.getElementById('form-nueva-sala');
+const btnGuardarNuevaSala = document.getElementById('btn-guardar-nueva-sala');
+const selectGestionSala = document.getElementById('select-gestion-sala');
+const lblTotalPuestosSala = document.getElementById('lbl-total-puestos-sala');
+const btnAgregarPuestoAccion = document.getElementById('btn-agregar-puesto-accion');
+const selectRetirarPuesto = document.getElementById('select-retirar-puesto');
+const btnRetirarPuestoAccion = document.getElementById('btn-retirar-puesto-accion');
+
 let puestoLibreSeleccionado = null;
 
 const btnCancelarReubicar = document.getElementById('btn-cancelar-reubicar');
@@ -85,9 +105,11 @@ const btnConfirmarReubicar = document.getElementById('btn-confirmar-reubicar');
 document.addEventListener('DOMContentLoaded', async () => {
     const user = await verificarSesion();
     if (!user) return;
+    aplicarPermisosDOM(user);
     actualizarFechaEncabezado();
     cargarMapaUbicaciones();
     configurarEventosModal();
+    configurarGestionSalas();
 });
 
 /**
@@ -163,7 +185,7 @@ async function actualizarPuestosReubicacion(salaId, equipoId) {
 }
 
 
-async function abrirModalAsignarPuesto(salaId, puestoId, salaNombre, puestoCodigo) {
+async function abrirModalAsignarPuestoLibre(salaId, puestoId, salaNombre, puestoCodigo) {
     if (!modalAsignarPuesto) return;
     puestoLibreSeleccionado = { 
         salaId: parseInt(salaId, 10), 
@@ -177,26 +199,28 @@ async function abrirModalAsignarPuesto(salaId, puestoId, salaNombre, puestoCodig
 
     // Poblar equipos operativos disponibles en depósito / sin puesto
     if (selectEquipoDeposito) {
-        selectEquipoDeposito.innerHTML = '<option value="">Cargando equipos disponibles...</option>';
+        selectEquipoDeposito.innerHTML = '<option value="" disabled selected>Cargando equipos disponibles...</option>';
+        if (btnConfirmarAsignarDeposito) btnConfirmarAsignarDeposito.disabled = true;
+
         try {
-            const todosEquipos = await obtenerEquipos();
-            const equiposDisponibles = (todosEquipos || []).filter(eq => (!eq.puesto_id || eq.puesto_id === null) && eq.estado === 'OPERATIVO');
+            const resp = await obtenerEquipos();
+            const todosEquipos = Array.isArray(resp) ? resp : (resp?.data || []);
+            const equiposDisponibles = todosEquipos.filter(eq => !eq.puesto_id && eq.estado === 'OPERATIVO');
 
             if (equiposDisponibles.length === 0) {
-                selectEquipoDeposito.innerHTML = '<option value="" disabled selected>No hay equipos operativos disponibles en depósito</option>';
+                selectEquipoDeposito.innerHTML = '<option value="" disabled selected>No hay equipos disponibles en depósito</option>';
                 if (btnConfirmarAsignarDeposito) btnConfirmarAsignarDeposito.disabled = true;
             } else {
-                selectEquipoDeposito.innerHTML = '<option value="">Selecciona un equipo de depósito...</option>' +
+                selectEquipoDeposito.innerHTML = '<option value="" disabled selected>Selecciona un equipo de depósito...</option>' +
                     equiposDisponibles.map(eq => `
-                        <option value="${eq.id}">
-                            ${eq.codigo_patrimonial} — ${eq.marca || ''} ${eq.modelo || ''} (${(eq.categoria || 'EQUIPO').replace(/_/g, ' ')})
-                        </option>
+                        <option value="${eq.id}">[${eq.codigo_patrimonial}] ${eq.marca} ${eq.modelo} - ${eq.categoria}</option>
                     `).join('');
                 if (btnConfirmarAsignarDeposito) btnConfirmarAsignarDeposito.disabled = false;
             }
         } catch (err) {
             console.error('Error al cargar equipos de depósito:', err);
-            selectEquipoDeposito.innerHTML = '<option value="" disabled>Error al cargar catálogo de activos</option>';
+            selectEquipoDeposito.innerHTML = '<option value="" disabled selected>No hay equipos disponibles en depósito</option>';
+            if (btnConfirmarAsignarDeposito) btnConfirmarAsignarDeposito.disabled = true;
         }
     }
 
@@ -204,6 +228,8 @@ async function abrirModalAsignarPuesto(salaId, puestoId, salaNombre, puestoCodig
     modalAsignarPuesto.style.display = 'flex';
     document.body.style.overflow = 'hidden';
 }
+
+const abrirModalAsignarPuesto = abrirModalAsignarPuestoLibre;
 
 function cerrarModalAsignarPuesto() {
     if (!modalAsignarPuesto) return;
@@ -405,7 +431,7 @@ async function cargarMapaUbicaciones() {
         // Delegar eventos de clic en los puestos físicos ocupados
 
         // Delegar eventos de clic en los puestos libres para asignación rápida
-        document.querySelectorAll('.workstation-card.free').forEach(card => {
+        document.querySelectorAll('.workstation-card.free, .puesto-card.libre').forEach(card => {
             card.addEventListener('click', (e) => {
                 const salaId = e.currentTarget.getAttribute('data-sala-id');
                 const puestoId = e.currentTarget.getAttribute('data-puesto-id');
@@ -850,3 +876,278 @@ initThemeToggle();
 
 // Inicializar Command Palette Global (Ctrl + K)
 initCommandPalette();
+
+// Delegación universal para cierre de modales vía atributo data-modal-close
+document.addEventListener('click', (e) => {
+    const closeBtn = e.target.closest('[data-modal-close]');
+    if (closeBtn) {
+        const modal = closeBtn.closest('.modal-backdrop');
+        if (modal) {
+            modal.classList.remove('open');
+            modal.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+    }
+});
+
+
+/* ==========================================================================
+   MODAL: ADMINISTRACIÓN DE ESPACIOS Y PUESTOS (ROL ADMIN)
+   ========================================================================== */
+
+function abrirModalGestionSalas(tab = 'nueva-sala') {
+    if (!modalGestionSalas) return;
+    modalGestionSalas.style.display = 'flex';
+    modalGestionSalas.classList.add('open');
+    document.body.style.overflow = 'hidden';
+
+    poblarSelectorSalasGestion();
+    cambiarTabGestion(tab);
+}
+
+function cerrarModalGestionSalas() {
+    if (!modalGestionSalas) return;
+    modalGestionSalas.classList.remove('open');
+    modalGestionSalas.style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+function cambiarTabGestion(tab) {
+    if (tab === 'nueva-sala') {
+        if (tabBtnNuevaSala) tabBtnNuevaSala.classList.add('active');
+        if (tabBtnAjustarPuestos) tabBtnAjustarPuestos.classList.remove('active');
+        if (tabPanelNuevaSala) tabPanelNuevaSala.style.display = 'block';
+        if (tabPanelAjustarPuestos) tabPanelAjustarPuestos.style.display = 'none';
+    } else {
+        if (tabBtnAjustarPuestos) tabBtnAjustarPuestos.classList.add('active');
+        if (tabBtnNuevaSala) tabBtnNuevaSala.classList.remove('active');
+        if (tabPanelAjustarPuestos) tabPanelAjustarPuestos.style.display = 'block';
+        if (tabPanelNuevaSala) tabPanelNuevaSala.style.display = 'none';
+        
+        actualizarInfoPuestosSalaGestion();
+    }
+}
+
+function poblarSelectorSalasGestion(selectedId = null) {
+    if (!selectGestionSala) return;
+    const salas = mapaCache || [];
+    if (salas.length === 0) {
+        selectGestionSala.innerHTML = '<option value="">No hay salas registradas</option>';
+        return;
+    }
+
+    const currentVal = selectedId || selectGestionSala.value || (salas[0]?.id ? String(salas[0].id) : '');
+    selectGestionSala.innerHTML = salas.map(s => `
+        <option value="${s.id}" ${String(s.id) === String(currentVal) ? 'selected' : ''}>
+            ${s.nombre} (${s.puestos?.length || 0} puestos)
+        </option>
+    `).join('');
+
+    actualizarInfoPuestosSalaGestion();
+}
+
+function actualizarInfoPuestosSalaGestion() {
+    if (!selectGestionSala || !lblTotalPuestosSala) return;
+    const salaId = selectGestionSala.value;
+    const sala = (mapaCache || []).find(s => String(s.id) === String(salaId));
+
+    if (!sala) {
+        lblTotalPuestosSala.textContent = '0 puestos';
+        if (selectRetirarPuesto) {
+            selectRetirarPuesto.innerHTML = '<option value="">Selecciona una sala válida</option>';
+        }
+        return;
+    }
+
+    const puestos = sala.puestos || [];
+    const ocupados = puestos.filter(p => p.ocupado || p.equipo).length;
+    const libres = puestos.filter(p => !p.ocupado && !p.equipo);
+
+    lblTotalPuestosSala.innerHTML = `<strong>${puestos.length} puestos</strong> <span style="font-size: 12px; font-weight: normal; color: var(--text-muted);">(${ocupados} ocupados, ${libres.length} libres)</span>`;
+
+    if (selectRetirarPuesto) {
+        if (libres.length === 0) {
+            selectRetirarPuesto.innerHTML = '<option value="" disabled selected>No hay puestos libres para retirar</option>';
+            if (btnRetirarPuestoAccion) btnRetirarPuestoAccion.disabled = true;
+        } else {
+            selectRetirarPuesto.innerHTML = '<option value="" disabled selected>Selecciona un puesto libre...</option>' +
+                libres.map(p => `
+                    <option value="${p.id}">Puesto ${p.codigo_puesto} (Fila ${p.fila || '-'}, Col ${p.columna || '-'})</option>
+                `).join('');
+            if (btnRetirarPuestoAccion) btnRetirarPuestoAccion.disabled = false;
+        }
+    }
+}
+
+function configurarGestionSalas() {
+    if (btnGestionarSalas) {
+        btnGestionarSalas.addEventListener('click', (e) => {
+            e.preventDefault();
+            abrirModalGestionSalas('nueva-sala');
+        });
+    }
+
+    if (btnCerrarModalSalas) {
+        btnCerrarModalSalas.addEventListener('click', cerrarModalGestionSalas);
+    }
+
+    if (modalGestionSalas) {
+        modalGestionSalas.addEventListener('click', (e) => {
+            if (e.target === modalGestionSalas) cerrarModalGestionSalas();
+        });
+    }
+
+    if (tabBtnNuevaSala) {
+        tabBtnNuevaSala.addEventListener('click', () => cambiarTabGestion('nueva-sala'));
+    }
+
+    if (tabBtnAjustarPuestos) {
+        tabBtnAjustarPuestos.addEventListener('click', () => cambiarTabGestion('ajustar-puestos'));
+    }
+
+    if (selectGestionSala) {
+        selectGestionSala.addEventListener('change', () => {
+            actualizarInfoPuestosSalaGestion();
+        });
+    }
+
+    // Submit: Nueva Sala
+    if (formNuevaSala) {
+        formNuevaSala.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const nombre = document.getElementById('input-sala-nombre')?.value.trim();
+            const descripcion = document.getElementById('input-sala-descripcion')?.value.trim();
+            const capacidad = parseInt(document.getElementById('input-sala-capacidad')?.value, 10) || 0;
+
+            if (!nombre) {
+                Toast.warning('Campo Requerido', 'Ingresa el nombre del laboratorio o sala.');
+                return;
+            }
+
+            const btn = btnGuardarNuevaSala;
+            const originalHtml = btn ? btn.innerHTML : '';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Guardando...';
+            }
+
+            try {
+                const res = await crearSala({ nombre, descripcion, capacidad_puestos: capacidad });
+                if (res && res.success) {
+                    Toast.success('Sala Creada', `El espacio "${nombre}" fue registrado exitosamente.`);
+                    formNuevaSala.reset();
+                    await cargarMapaUbicaciones();
+                    poblarSelectorSalasGestion(res.id);
+                    cambiarTabGestion('ajustar-puestos');
+                } else {
+                    Toast.error('Error al Crear', res?.message || 'No se pudo crear la sala.');
+                }
+            } catch (err) {
+                console.error('Error al crear sala:', err);
+                Toast.error('Error', err.message || 'Error de conexión.');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                }
+            }
+        });
+    }
+
+        // Botón Agregar Puesto
+    if (btnAgregarPuestoAccion) {
+        btnAgregarPuestoAccion.addEventListener('click', async () => {
+            const salaId = selectGestionSala?.value;
+            if (!salaId) {
+                Toast.warning('Atención', 'Selecciona primero una sala para agregar un puesto.');
+                return;
+            }
+
+            const btn = btnAgregarPuestoAccion;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Creando...';
+
+            try {
+                const res = await agregarPuesto(salaId);
+                if (res && res.success) {
+                    Toast.success('Puesto Creado', res.message || 'Puesto generado correctamente.');
+                    await cargarMapaUbicaciones();
+                    poblarSelectorSalasGestion(salaId);
+                } else {
+                    Toast.error('Error', res?.message || 'No se pudo agregar el puesto.');
+                }
+            } catch (err) {
+                console.error('Error al agregar puesto:', err);
+                Toast.error('Error', err.message || 'Error de conexión.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-plus"></i> <span>Agregar Puesto</span>';
+            }
+        });
+    }
+
+        // Botón Retirar Puesto
+    if (btnRetirarPuestoAccion) {
+        btnRetirarPuestoAccion.addEventListener('click', async () => {
+            const puestoId = selectRetirarPuesto?.value;
+            if (!puestoId) {
+                Toast.warning('Selección Requerida', 'Selecciona un puesto libre para retirar.');
+                return;
+            }
+
+            const btn = btnRetirarPuestoAccion;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Retirando...';
+
+            try {
+                const res = await eliminarPuesto(puestoId);
+                if (res && res.success) {
+                    Toast.success('Puesto Retirado', 'El puesto fue retirado de la sala exitosamente.');
+                    await cargarMapaUbicaciones();
+                    poblarSelectorSalasGestion(selectGestionSala?.value);
+                } else {
+                    Toast.error('Conflicto', res?.message || 'No se pudo retirar el puesto.');
+                }
+            } catch (err) {
+                console.error('Error al eliminar puesto:', err);
+                Toast.error('No se puede retirar', err.message || 'El puesto está ocupado por un activo.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-trash-can"></i> <span>Retirar Puesto</span>';
+            }
+        });
+    }
+}
+
+// Delegación universal para cierre de modales vía atributo data-modal-close
+document.addEventListener('click', (e) => {
+    const closeBtn = e.target.closest('[data-modal-close]');
+    if (closeBtn) {
+        const modal = closeBtn.closest('.modal-backdrop');
+        if (modal) {
+            if (modal.id === 'modal-gestion-salas') {
+                cerrarModalGestionSalas();
+            } else if (modal.id === 'modal-asignar-puesto-libre') {
+                cerrarModalAsignarPuesto();
+            } else if (modal.id === 'modal-reubicar-equipo') {
+                cerrarModalReubicar();
+            } else if (modal.id === 'modal-resumen-activo') {
+                cerrarModalResumen();
+            } else {
+                modal.classList.remove('open');
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+            }
+        }
+    }
+});
+
+// Cierre accesible con tecla Escape
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        if (modalGestionSalas && modalGestionSalas.classList.contains('open')) cerrarModalGestionSalas();
+        if (modalAsignarPuesto && modalAsignarPuesto.classList.contains('open')) cerrarModalAsignarPuesto();
+        if (modalReubicar && modalReubicar.classList.contains('open')) cerrarModalReubicar();
+        if (modalResumen && modalResumen.classList.contains('open')) cerrarModalResumen();
+    }
+});

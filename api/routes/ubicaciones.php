@@ -34,6 +34,15 @@ if ($method === 'GET') {
     if ($action === 'reubicar-equipo') {
         AuthController::requireAuth();
         UbicacionController::reubicarEquipo();
+    } elseif ($action === 'crear-sala') {
+        AuthController::requireAdmin();
+        UbicacionController::crearSala();
+    } elseif ($action === 'agregar-puesto') {
+        AuthController::requireAdmin();
+        UbicacionController::agregarPuesto();
+    } elseif ($action === 'eliminar-puesto') {
+        AuthController::requireAdmin();
+        UbicacionController::eliminarPuesto();
     } else {
         Database::sendJson([
             'success' => false,
