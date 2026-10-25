@@ -1,35 +1,56 @@
-﻿-- MariaDB dump 10.19  Distrib 10.4.32-MariaDB, for Win64 (AMD64)
---
--- Host: localhost    Database: lab_inventario
--- ------------------------------------------------------
--- Server version	10.4.32-MariaDB
+-- ==========================================================
+-- SISTEMA DE GESTIÓN E INVENTARIO DE LABORATORIOS DE CÓMPUTO
+-- Esquema DDL Maestro de Base de Datos: lab_inventario
+-- Tablas Activas (5): salas, puestos, equipos, prestamos, usuarios
+-- Charset: utf8mb4 | Collation: utf8mb4_unicode_ci
+-- Motor: InnoDB (Transaccional, Integridad Referencial)
+-- ==========================================================
 
-/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!40101 SET NAMES utf8mb4 */;
-/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
-/*!40103 SET TIME_ZONE='+00:00' */;
-/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
-/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
-/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
-/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
 
---
--- Current Database: `lab_inventario`
---
-
-CREATE DATABASE /*!32312 IF NOT EXISTS*/ `lab_inventario` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
-
+-- 1. Creación de la Base de Datos
+CREATE DATABASE IF NOT EXISTS `lab_inventario` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE `lab_inventario`;
 
---
--- Table structure for table `equipos`
---
-
+-- 2. Eliminación de tablas en orden inverso de dependencias
+DROP TABLE IF EXISTS `prestamos`;
 DROP TABLE IF EXISTS `equipos`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
+DROP TABLE IF EXISTS `puestos`;
+DROP TABLE IF EXISTS `salas`;
+DROP TABLE IF EXISTS `usuarios`;
+
+-- ----------------------------------------------------------
+-- 3. Tabla: salas (Ubicaciones físicas y laboratorios)
+-- ----------------------------------------------------------
+CREATE TABLE `salas` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `nombre` varchar(100) NOT NULL,
+  `descripcion` varchar(255) DEFAULT NULL,
+  `capacidad_puestos` int(11) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------
+-- 4. Tabla: puestos (Puestos de trabajo físicos por sala)
+-- ----------------------------------------------------------
+CREATE TABLE `puestos` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `sala_id` int(11) NOT NULL,
+  `codigo_puesto` varchar(50) NOT NULL,
+  `fila` int(11) DEFAULT NULL,
+  `columna` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `codigo_puesto` (`codigo_puesto`),
+  KEY `sala_id` (`sala_id`),
+  CONSTRAINT `puestos_ibfk_1` FOREIGN KEY (`sala_id`) REFERENCES `salas` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------
+-- 5. Tabla: equipos (Activos patrimoniales y tecnológicos)
+-- ----------------------------------------------------------
 CREATE TABLE `equipos` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `codigo_patrimonial` varchar(50) NOT NULL,
@@ -55,120 +76,66 @@ CREATE TABLE `equipos` (
   KEY `sala_id` (`sala_id`),
   CONSTRAINT `equipos_ibfk_1` FOREIGN KEY (`sala_id`) REFERENCES `salas` (`id`),
   CONSTRAINT `equipos_ibfk_2` FOREIGN KEY (`puesto_id`) REFERENCES `puestos` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Dumping data for table `equipos`
---
-
-LOCK TABLES `equipos` WRITE;
-/*!40000 ALTER TABLE `equipos` DISABLE KEYS */;
-INSERT INTO `equipos` VALUES (1,'PAT-PC-001','5CD2348X1Q','PC_ESCRITORIO','HP','ProDesk 400 G6','OPERATIVO',1,1,'Intel Core i5-10500',16,'512 GB SSD NVMe','192.168.10.21','A0:B3:CC:11:22:33','2024-01-15','Equipo principal del puesto 1','2026-09-24 16:54:30'),(2,'PAT-PC-002','5CD2348X2W','PC_ESCRITORIO','HP','ProDesk 400 G6','OPERATIVO',1,2,'Intel Core i5-10500',16,'512 GB SSD NVMe','192.168.10.22','A0:B3:CC:11:22:34','2024-01-15','Equipo asignado','2026-09-24 16:54:30'),(3,'PAT-PC-003','MXL1029384','PC_ESCRITORIO','Dell','OptiPlex 7080','CON_FALLA',1,3,'Intel Core i7-10700',16,'1 TB SSD SATA','192.168.10.23','B8:27:EB:44:55:66','2024-02-01','Presenta reinicios intermitentes','2026-09-24 16:54:30'),(4,'PAT-AIO-001','W8823190LK','ALL_IN_ONE','Lenovo','IdeaCentre AIO 3','EN_MANTENIMIENTO',3,7,'AMD Ryzen 5 5500U',8,'256 GB SSD NVMe','192.168.10.80','FC:FB:FB:01:02:03','2024-03-10','En taller para mantenimiento preventivo','2026-09-24 16:54:30'),(5,'PAT-SW-001','FOC18290Z9','NETWORKING','Cisco','Catalyst 2960-X','OPERATIVO',2,NULL,NULL,NULL,NULL,'192.168.10.2','00:1E:13:C2:A1:00','2023-11-20','Switch principal Lab 2','2026-09-24 16:54:30'),(6,'PAT-PRY-001','V79F910023','PROYECTOR','Epson','PowerLite E20','EN_PRESTAMO',1,NULL,NULL,NULL,NULL,NULL,NULL,'2024-01-10','En pr├®stamo al departamento docente','2026-09-24 16:54:30'),(7,'PAT-REP-001','KVR32S22S8','COMPONENTE_INTERNO','Kingston','DDR4 3200MHz 8GB','OPERATIVO',4,NULL,NULL,8,NULL,NULL,NULL,'2024-05-12','M├│dulo de RAM de repuesto','2026-09-24 16:54:30');
-/*!40000 ALTER TABLE `equipos` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `mantenimientos`
---
-
-DROP TABLE IF EXISTS `mantenimientos`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `mantenimientos` (
+-- ----------------------------------------------------------
+-- 6. Tabla: prestamos (Control y trazabilidad de préstamos externos)
+-- ----------------------------------------------------------
+CREATE TABLE `prestamos` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `equipo_id` int(11) NOT NULL,
-  `fecha_reporte` timestamp NOT NULL DEFAULT current_timestamp(),
-  `fecha_resolucion` timestamp NULL DEFAULT NULL,
-  `tipo` enum('PREVENTIVO','CORRECTIVO','CAMBIO_PIEZA','LIMPIEZA') NOT NULL,
-  `prioridad` enum('BAJA','MEDIA','ALTA','CRITICA') DEFAULT 'MEDIA',
-  `titulo` varchar(150) NOT NULL,
-  `descripcion_falla` text NOT NULL,
-  `diagnostico_tecnico` text DEFAULT NULL,
-  `acciones_realizadas` text DEFAULT NULL,
-  `tecnico_responsable` varchar(100) NOT NULL,
-  `estado_resultado` enum('PENDIENTE','EN_CURSO','RESUELTO','DERIVADO_A_BAJA') DEFAULT 'PENDIENTE',
+  `solicitante_nombre` varchar(120) NOT NULL,
+  `solicitante_identificacion` varchar(50) NOT NULL,
+  `destino_uso` varchar(150) NOT NULL,
+  `fecha_prestamo` datetime NOT NULL DEFAULT current_timestamp(),
+  `fecha_devolucion_estimada` date DEFAULT NULL,
+  `fecha_devolucion_real` datetime DEFAULT NULL,
+  `estado_prestamo` enum('ACTIVO','DEVUELTO') NOT NULL DEFAULT 'ACTIVO',
+  `observaciones` text DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `equipo_id` (`equipo_id`),
-  CONSTRAINT `mantenimientos_ibfk_1` FOREIGN KEY (`equipo_id`) REFERENCES `equipos` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+  KEY `estado_prestamo` (`estado_prestamo`),
+  CONSTRAINT `prestamos_ibfk_1` FOREIGN KEY (`equipo_id`) REFERENCES `equipos` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Dumping data for table `mantenimientos`
---
-
-LOCK TABLES `mantenimientos` WRITE;
-/*!40000 ALTER TABLE `mantenimientos` DISABLE KEYS */;
-INSERT INTO `mantenimientos` VALUES (1,3,'2026-09-22 13:30:00',NULL,'CORRECTIVO','ALTA','Reinicios constantes en carga de trabajo','El equipo se apaga bruscamente al ejecutar software pesado.','Posible degradaci├│n de fuente de poder o pasta t├®rmica seca.',NULL,'T├®cnico de Turno','PENDIENTE'),(2,4,'2026-09-23 18:15:00',NULL,'PREVENTIVO','MEDIA','Limpieza semestral y cambio t├®rmico','Exceso de polvo en rejillas y temperaturas elevadas.','Ventilador saturado de polvo.','Desensamble realizado, a la espera de pasta t├®rmica.','T├®cnico de Turno','EN_CURSO');
-/*!40000 ALTER TABLE `mantenimientos` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `puestos`
---
-
-DROP TABLE IF EXISTS `puestos`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `puestos` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `sala_id` int(11) NOT NULL,
-  `codigo_puesto` varchar(50) NOT NULL,
-  `fila` int(11) DEFAULT NULL,
-  `columna` int(11) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `codigo_puesto` (`codigo_puesto`),
-  KEY `sala_id` (`sala_id`),
-  CONSTRAINT `puestos_ibfk_1` FOREIGN KEY (`sala_id`) REFERENCES `salas` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `puestos`
---
-
-LOCK TABLES `puestos` WRITE;
-/*!40000 ALTER TABLE `puestos` DISABLE KEYS */;
-INSERT INTO `puestos` VALUES (1,1,'LAB1-P01',1,1,'2026-09-24 16:54:30'),(2,1,'LAB1-P02',1,2,'2026-09-24 16:54:30'),(3,1,'LAB1-P03',1,3,'2026-09-24 16:54:30'),(4,1,'LAB1-P04',1,4,'2026-09-24 16:54:30'),(5,2,'LAB2-P01',1,1,'2026-09-24 16:54:30'),(6,2,'LAB2-P02',1,2,'2026-09-24 16:54:30'),(7,3,'TALLER-MESA1',1,1,'2026-09-24 16:54:30');
-/*!40000 ALTER TABLE `puestos` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `salas`
---
-
-DROP TABLE IF EXISTS `salas`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `salas` (
+-- ----------------------------------------------------------
+-- 7. Tabla: usuarios (Cuentas y roles jerárquicos ADMIN / OPERADOR)
+-- ----------------------------------------------------------
+CREATE TABLE `usuarios` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `nombre` varchar(100) NOT NULL,
-  `descripcion` varchar(255) DEFAULT NULL,
-  `capacidad_puestos` int(11) DEFAULT 0,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+  `email` varchar(120) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `rol` enum('ADMIN','OPERADOR') NOT NULL DEFAULT 'OPERADOR',
+  `activo` tinyint(1) NOT NULL DEFAULT 1,
+  `ultimo_acceso` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `email` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Dumping data for table `salas`
---
+-- ----------------------------------------------------------
+-- 8. Datos Semilla Iniciales (Usuarios Administrativos y Salas Base)
+-- ----------------------------------------------------------
+-- Contraseña Admin: Admin123*
+-- Contraseña Operador: Operador123*
+INSERT INTO `usuarios` (`id`, `nombre`, `email`, `password`, `rol`, `activo`, `ultimo_acceso`, `created_at`) VALUES
+(1, 'Coordinador de Laboratorios', 'admin@lab.local', '$2y$10$BIZ5Vfjrl31E7tb2Y25mEeHumUPDdPXcCEtkxtnN1Fx6APApQlFl2', 'ADMIN', 1, NULL, CURRENT_TIMESTAMP),
+(2, 'Custodio Técnico', 'operador@lab.local', '$2y$10$Kk6dYp/f3V79g2pEsmzKku0N.v95hS5.k8tV11.bEw7bVbT/vM0Wy', 'OPERADOR', 1, NULL, CURRENT_TIMESTAMP);
 
-LOCK TABLES `salas` WRITE;
-/*!40000 ALTER TABLE `salas` DISABLE KEYS */;
-INSERT INTO `salas` VALUES (1,'Laboratorio 1 - Programaci├│n','Sala para desarrollo de software',20,'2026-09-24 16:54:30'),(2,'Laboratorio 2 - Redes','Mesas de trabajo y racks de conectividad',15,'2026-09-24 16:54:30'),(3,'Taller de Soporte y Hardware','├ürea de diagn├│stico y reparaci├│n',6,'2026-09-24 16:54:30'),(4,'Dep├│sito Central','Reserva de componentes y repuestos',0,'2026-09-24 16:54:30');
-/*!40000 ALTER TABLE `salas` ENABLE KEYS */;
-UNLOCK TABLES;
-/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+-- Salas Base
+INSERT INTO `salas` (`id`, `nombre`, `descripcion`, `capacidad_puestos`, `created_at`) VALUES
+(1, 'Laboratorio 1 - Programación', 'Sala para desarrollo de software y computación gráfica', 20, CURRENT_TIMESTAMP),
+(2, 'Laboratorio 2 - Redes y Hardware', 'Mesas de trabajo, bancos de pruebas y racks de conectividad', 16, CURRENT_TIMESTAMP),
+(3, 'Depósito Central y Reserva', 'Almacén para equipos flotantes, repuestos y reserva técnica', 0, CURRENT_TIMESTAMP);
 
-/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
-/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
-/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
-/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+-- Puestos Base Laboratorio 1
+INSERT INTO `puestos` (`id`, `sala_id`, `codigo_puesto`, `fila`, `columna`, `created_at`) VALUES
+(1, 1, 'LAB1-P01', 1, 1, CURRENT_TIMESTAMP),
+(2, 1, 'LAB1-P02', 1, 2, CURRENT_TIMESTAMP),
+(3, 1, 'LAB1-P03', 1, 3, CURRENT_TIMESTAMP),
+(4, 1, 'LAB1-P04', 1, 4, CURRENT_TIMESTAMP),
+(5, 2, 'LAB2-P01', 1, 1, CURRENT_TIMESTAMP),
+(6, 2, 'LAB2-P02', 1, 2, CURRENT_TIMESTAMP);
 
--- Dump completed on 2026-09-24 13:19:09
+SET FOREIGN_KEY_CHECKS = 1;

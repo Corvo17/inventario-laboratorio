@@ -321,7 +321,71 @@
         </div>
     </div>
 
-    <div id="toast-container" class="toast-container"></div>
+        <!-- Modal: Asignación Rápida en Puesto Libre -->
+    <div id="modal-asignar-puesto-libre" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="asignar-puesto-title" style="display: none;">
+        <div class="modal-card" style="max-width: 480px;">
+            <div class="modal-header">
+                <div>
+                    <h3 id="asignar-puesto-title" class="modal-title">Gestión de Puesto Libre</h3>
+                    <p class="modal-description" id="asignar-puesto-desc">Elige si deseas registrar un equipo nuevo o asignar un activo disponible en depósito.</p>
+                </div>
+                <button type="button" id="btn-cerrar-asignar-puesto" class="btn-icon" aria-label="Cerrar modal">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="modal-body" style="display: flex; flex-direction: column; gap: 1.25rem;">
+                <!-- Información del Puesto Seleccionado -->
+                <div style="padding: 10px 14px; background: var(--bg-muted); border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <span id="puesto-libre-codigo" class="cell-code" style="font-size: 13px;">LAB1-P01</span>
+                        <div id="puesto-libre-sala" style="font-weight: 600; font-size: 14px; color: var(--text-primary); margin-top: 3px;">Laboratorio 1</div>
+                    </div>
+                    <span class="workstation-badge badge-neutral">Disponible</span>
+                </div>
+
+                <!-- Opción 1: Asignar un equipo en depósito -->
+                <form id="form-asignar-deposito" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="select-equipo-deposito" class="form-label" style="font-weight: 600;">
+                            <i class="fa-solid fa-box-archive" style="margin-right: 4px; color: var(--text-muted);"></i> Asignar Equipo en Depósito / Reserva
+                        </label>
+                        <select id="select-equipo-deposito" class="form-control" required>
+                            <option value="">Cargando equipos disponibles...</option>
+                        </select>
+                        <span style="font-size: 11px; color: var(--text-muted); margin-top: 4px; display: block;">
+                            Muestra activos operativos sin puesto asignado (en almacén o flotantes).
+                        </span>
+                    </div>
+
+                    <button type="submit" id="btn-confirmar-asignar-deposito" class="btn btn-primary" style="width: 100%;">
+                        <i class="fa-solid fa-link"></i>
+                        <span>Asignar Activo Seleccionado</span>
+                    </button>
+                </form>
+
+                <div style="display: flex; align-items: center; gap: 10px; margin: 4px 0;">
+                    <hr style="flex: 1; border: none; border-top: 1px solid var(--border-color);">
+                    <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">O bien</span>
+                    <hr style="flex: 1; border: none; border-top: 1px solid var(--border-color);">
+                </div>
+
+                <!-- Opción 2: Registrar un equipo nuevo -->
+                <div>
+                    <button type="button" id="btn-ir-crear-nuevo-puesto" class="btn btn-outline" style="width: 100%;">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Registrar Equipo Nuevo en este Puesto</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="modal-footer" style="display: flex; justify-content: flex-end;">
+                <button type="button" id="btn-cancelar-asignar-puesto" class="btn btn-secondary">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+<div id="toast-container" class="toast-container"></div>
 
     <script src="js/libs/qrcode.min.js"></script>
     <script type="module" src="js/views/ubicaciones.js"></script>

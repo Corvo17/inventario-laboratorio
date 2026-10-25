@@ -28,18 +28,23 @@ if ($method === 'GET') {
     }
 } elseif ($method === 'POST') {
     if ($action === 'actualizar') {
+        AuthController::requireAuth();
         EquipoController::update($id);
     } elseif ($action === 'dar-de-baja') {
         AuthController::requireAdmin('Acción restringida: solo un Administrador puede autorizar la baja patrimonial de un activo.');
         EquipoController::darDeBaja($id);
     } elseif ($action === 'registrar-prestamo') {
+        AuthController::requireAuth();
         EquipoController::registrarPrestamo();
     } elseif ($action === 'devolver-prestamo') {
+        AuthController::requireAuth();
         EquipoController::devolverPrestamo();
     } else {
+        AuthController::requireAuth();
         EquipoController::store();
     }
 } elseif ($method === 'PUT') {
+    AuthController::requireAuth();
     EquipoController::update($id);
 } else {
     Database::sendJson(['success' => false, 'message' => "Método {$method} no permitido."], 405);

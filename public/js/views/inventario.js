@@ -18,11 +18,7 @@ import {
     registrarPrestamoEquipo,
     registrarDevolucionEquipo
 } from '../services/api.service.js';
-import { 
-    renderStatusBadge, 
-    renderMaintenanceStatusBadge, 
-    renderPriorityBadge 
-} from '../components/status-badge.js';
+import { renderStatusBadge } from '../components/status-badge.js';
 import { Toast } from '../components/toast.js';
 import { exportarTablaCSV, imprimirActaEquipo } from '../components/reportes.js';
 
@@ -862,13 +858,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    if (formNuevoEquipo) {
+        if (formNuevoEquipo) {
         formNuevoEquipo.addEventListener('submit', async (e) => {
             e.preventDefault();
             ocultarErrorModal();
 
-            if (btnGuardarEquipo) btnGuardarEquipo.disabled = true;
-            if (btnGuardarTexto) btnGuardarTexto.textContent = 'Guardando...';
+            const originalGuardarHtml = btnGuardarEquipo ? btnGuardarEquipo.innerHTML : '';
+            if (btnGuardarEquipo) {
+                btnGuardarEquipo.disabled = true;
+                btnGuardarEquipo.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Guardando...';
+            }
 
             try {
                 const formData = new FormData(formNuevoEquipo);
@@ -886,8 +885,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 mostrarErrorModal(error.message || 'Error de conexión.');
                 Toast.error('Error de Conexión', error.message);
             } finally {
-                if (btnGuardarEquipo) btnGuardarEquipo.disabled = false;
-                if (btnGuardarTexto) btnGuardarTexto.textContent = 'Guardar Activo';
+                if (btnGuardarEquipo) {
+                    btnGuardarEquipo.disabled = false;
+                    btnGuardarEquipo.innerHTML = originalGuardarHtml;
+                }
             }
         });
     }
@@ -994,9 +995,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    if (formEditar) {
+        if (formEditar) {
         formEditar.addEventListener('submit', async (e) => {
             e.preventDefault();
+            const btnSubmit = document.getElementById('btn-guardar-edit');
+            const originalEditHtml = btnSubmit ? btnSubmit.innerHTML : '';
+            if (btnSubmit) {
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Guardando...';
+            }
+
             const id = document.getElementById('edit-equipo-id').value;
             const payload = {
                 codigo_patrimonial: document.getElementById('edit-codigo').value.trim(),
@@ -1040,6 +1048,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     alertEdit.style.display = 'block';
                 }
                 Toast.error('Error', err.message);
+            } finally {
+                if (btnSubmit) {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = originalEditHtml;
+                }
             }
         });
     }
@@ -1053,9 +1066,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    if (formBaja) {
+        if (formBaja) {
         formBaja.addEventListener('submit', async (e) => {
             e.preventDefault();
+            const btnSubmit = document.getElementById('btn-dar-baja');
+            const originalBajaHtml = btnSubmit ? btnSubmit.innerHTML : '';
+            if (btnSubmit) {
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Guardando...';
+            }
+
             const id = inputBajaId.value;
             const motivo = document.getElementById('input-motivo-baja')?.value.trim() || '';
 
@@ -1083,9 +1103,96 @@ document.addEventListener('DOMContentLoaded', async () => {
                     alertBaja.style.display = 'block';
                 }
                 Toast.error('Error', err.message);
+            } finally {
+                if (btnSubmit) {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = originalBajaHtml;
+                }
             }
         });
     }
+    
+    // Eventos Modal Préstamos y Prevención de Doble Clic
+    if (btnCerrarPrestamo) btnCerrarPrestamo.addEventListener('click', cerrarModalPrestamo);
+    if (btnCancelarPrestamo) btnCancelarPrestamo.addEventListener('click', cerrarModalPrestamo);
+    if (modalPrestamo) {
+        modalPrestamo.addEventListener('click', (e) => {
+            if (e.target === modalPrestamo) cerrarModalPrestamo();
+        });
+    }
+
+    if (formPrestamo) {
+        formPrestamo.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btnSubmit = document.getElementById('btn-guardar-prestamo');
+            const originalPrestamoHtml = btnSubmit ? btnSubmit.innerHTML : '';
+            if (btnSubmit) {
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Guardando...';
+            }
+
+            const equipoId = prestamoEquipoId ? prestamoEquipoId.value : '';
+            const payload = {
+                equipo_id: equipoId,
+                solicitante_nombre: prestamoSolicitante ? prestamoSolicitante.value.trim() : '',
+                solicitante_identificacion: prestamoIdentificacion ? prestamoIdentificacion.value.trim() : '',
+                destino_uso: prestamoDestino ? prestamoDestino.value.trim() : '',
+                fecha_devolucion_estimada: prestamoFechaEstimada ? prestamoFechaEstimada.value : null,
+                observaciones: prestamoObservaciones ? prestamoObservaciones.value.trim() : null
+            };
+
+            try {
+                const res = await registrarPrestamoEquipo(payload);
+                if (res && res.success) {
+                    Toast.success('Préstamo Registrado', 'El activo fue asignado en préstamo correctamente.');
+                    cerrarModalPrestamo();
+                    await cargarInventario();
+                    if (equipoDetalleActual && equipoDetalleActual.id === parseInt(equipoId, 10)) {
+                        await abrirModalDetalle(equipoId);
+                    }
+                } else {
+                    Toast.error('Error al Registrar Préstamo', res?.message || 'No se pudo procesar el préstamo.');
+                }
+            } catch (err) {
+                console.error('Error al registrar préstamo:', err);
+                Toast.error('Error', err.message || 'Error de conexión.');
+            } finally {
+                if (btnSubmit) {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = originalPrestamoHtml;
+                }
+            }
+        });
+    }
+
+    // Validación en tiempo real de Formato IPv4 y MAC
+    const ipv4Regex = /^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}$/;
+    const macRegex = /^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/;
+
+    function aplicarValidacionRed(inputEl, regex) {
+        if (!inputEl) return;
+        inputEl.addEventListener('input', () => {
+            const val = inputEl.value.trim();
+            if (val === '') {
+                inputEl.style.borderColor = '';
+                inputEl.style.boxShadow = '';
+                return;
+            }
+            if (regex.test(val)) {
+                inputEl.style.borderColor = 'var(--color-success, #22c55e)';
+                inputEl.style.boxShadow = '0 0 0 1px var(--color-success, #22c55e)';
+            } else {
+                inputEl.style.borderColor = 'var(--destructive, #ef4444)';
+                inputEl.style.boxShadow = '0 0 0 1px var(--destructive, #ef4444)';
+            }
+        });
+    }
+
+    aplicarValidacionRed(document.getElementById('input-ip'), ipv4Regex);
+    aplicarValidacionRed(document.getElementById('edit-ip'), ipv4Regex);
+    aplicarValidacionRed(document.getElementById('input-mac'), macRegex);
+    aplicarValidacionRed(document.getElementById('edit-mac'), macRegex);
+
     // 7. Detección y Preselección de Nuevo Equipo desde Puesto Libre o Parámetros URL
     const params = new URLSearchParams(window.location.search);
     if (params.get('accion') === 'nuevo') {

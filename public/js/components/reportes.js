@@ -114,17 +114,17 @@ export function imprimirActaEquipo(equipo, mantenimientos = []) {
     const filasHistorial = Array.isArray(mantenimientos) && mantenimientos.length > 0
         ? mantenimientos.map(p => `
             <tr>
-                <td style="white-space: nowrap;">${p.fecha_prestamo ? p.fecha_prestamo.split(' ')[0] : (p.fecha ? p.fecha.split(' ')[0] : 'N/A')}</td>
-                <td><strong>${p.solicitante_nombre || 'Docente / Solicitante'}</strong><br><small style="color: #666;">ID: ${p.solicitante_identificacion || 'N/A'}</small></td>
-                <td>${p.destino_uso || p.ubicacion || 'Área Académica'}</td>
-                <td><strong>${p.estado_prestamo === 'ACTIVO' ? 'PRÉSTAMO VIGENTE' : (p.estado || 'DEVUELTO')}</strong></td>
-                <td>${p.fecha_devolucion_real ? 'Devuelto el ' + p.fecha_devolucion_real.split(' ')[0] : (p.observaciones || p.descripcion || 'En custodia autorizada')}</td>
+                <td style="white-space: nowrap;">${p.fecha_prestamo ? p.fecha_prestamo.split(' ')[0] : 'N/A'}</td>
+                <td><strong>${p.solicitante_nombre || 'Docente / Solicitante'}</strong><br><small style="color: #666;">C.I.: ${p.solicitante_identificacion || 'N/A'}</small></td>
+                <td>${p.destino_uso || 'Área Académica'}</td>
+                <td><span style="display: inline-block; padding: 2px 6px; font-size: 8pt; font-weight: bold; border-radius: 3px; background: ${p.estado_prestamo === 'ACTIVO' ? '#fff3cd; color: #856404; border: 1px solid #ffeeba' : '#d4edda; color: #155724; border: 1px solid #c3e6cb'};">${p.estado_prestamo === 'ACTIVO' ? 'ACTIVO' : 'DEVUELTO'}</span></td>
+                <td>${p.fecha_devolucion_real ? p.fecha_devolucion_real.split(' ')[0] : (p.fecha_devolucion_estimada ? 'Estimada: ' + p.fecha_devolucion_estimada : 'Pendiente / En custodia')}</td>
             </tr>
         `).join('')
         : `
             <tr>
                 <td colspan="5" style="text-align: center; color: #555; padding: 14px;">
-                    Sin préstamos externos activos. Activo en custodia directa del laboratorio.
+                    Sin préstamos externos registrados. Activo en custodia directa del laboratorio.
                 </td>
             </tr>
         `;
@@ -353,12 +353,11 @@ export function imprimirActaEquipo(equipo, mantenimientos = []) {
         <table class="history-table">
             <thead>
                 <tr>
-                    <th style="width: 14%;">Fecha</th>
-                    <th style="width: 14%;">Tipo</th>
-                    <th style="width: 10%;">Prioridad</th>
-                    <th style="width: 14%;">Resultado</th>
-                    <th style="width: 18%;">Técnico Responsable</th>
-                    <th>Detalle / Diagnóstico</th>
+                    <th style="width: 16%;">Fecha Préstamo</th>
+                    <th style="width: 26%;">Solicitante / C.I.</th>
+                    <th style="width: 22%;">Destino / Uso</th>
+                    <th style="width: 16%;">Estado</th>
+                    <th style="width: 20%;">Fecha Devolución</th>
                 </tr>
             </thead>
             <tbody>

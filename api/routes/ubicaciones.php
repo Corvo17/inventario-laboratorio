@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../controllers/UbicacionController.php';
+require_once __DIR__ . '/../controllers/AuthController.php';
 
 // Preflight CORS
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -31,6 +32,7 @@ if ($method === 'GET') {
     }
 } elseif ($method === 'POST') {
     if ($action === 'reubicar-equipo') {
+        AuthController::requireAuth();
         UbicacionController::reubicarEquipo();
     } else {
         Database::sendJson([

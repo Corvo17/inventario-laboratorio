@@ -13,6 +13,7 @@ import {
     obtenerMapaUbicaciones, 
     obtenerSalas, 
     obtenerPuestos, 
+    obtenerEquipos,
     reubicarEquipo 
 } from '../services/api.service.js';
 import { Toast } from '../components/toast.js';
@@ -57,6 +58,19 @@ let puestoCodigoActual = '';
 const btnReubicarEquipo = document.getElementById('btn-reubicar-equipo');
 const modalReubicar = document.getElementById('modal-reubicar-equipo');
 const btnCerrarReubicar = document.getElementById('btn-cerrar-reubicar');
+// Elementos del Modal Asignar Puesto Libre
+const modalAsignarPuesto = document.getElementById('modal-asignar-puesto-libre');
+const btnCerrarAsignarPuesto = document.getElementById('btn-cerrar-asignar-puesto');
+const btnCancelarAsignarPuesto = document.getElementById('btn-cancelar-asignar-puesto');
+const puestoLibreCodigo = document.getElementById('puesto-libre-codigo');
+const puestoLibreSala = document.getElementById('puesto-libre-sala');
+const formAsignarDeposito = document.getElementById('form-asignar-deposito');
+const selectEquipoDeposito = document.getElementById('select-equipo-deposito');
+const btnConfirmarAsignarDeposito = document.getElementById('btn-confirmar-asignar-deposito');
+const btnIrCrearNuevoPuesto = document.getElementById('btn-ir-crear-nuevo-puesto');
+
+let puestoLibreSeleccionado = null;
+
 const btnCancelarReubicar = document.getElementById('btn-cancelar-reubicar');
 const formReubicar = document.getElementById('form-reubicar-equipo');
 const reubicarEquipoId = document.getElementById('reubicar-equipo-id');
@@ -148,6 +162,57 @@ async function actualizarPuestosReubicacion(salaId, equipoId) {
     }
 }
 
+
+async function abrirModalAsignarPuesto(salaId, puestoId, salaNombre, puestoCodigo) {
+    if (!modalAsignarPuesto) return;
+    puestoLibreSeleccionado = { 
+        salaId: parseInt(salaId, 10), 
+        puestoId: parseInt(puestoId, 10), 
+        salaNombre, 
+        puestoCodigo 
+    };
+
+    if (puestoLibreCodigo) puestoLibreCodigo.textContent = puestoCodigo || 'PUESTO';
+    if (puestoLibreSala) puestoLibreSala.textContent = salaNombre || 'Laboratorio';
+
+    // Poblar equipos operativos disponibles en depósito / sin puesto
+    if (selectEquipoDeposito) {
+        selectEquipoDeposito.innerHTML = '<option value="">Cargando equipos disponibles...</option>';
+        try {
+            const todosEquipos = await obtenerEquipos();
+            const equiposDisponibles = (todosEquipos || []).filter(eq => (!eq.puesto_id || eq.puesto_id === null) && eq.estado === 'OPERATIVO');
+
+            if (equiposDisponibles.length === 0) {
+                selectEquipoDeposito.innerHTML = '<option value="" disabled selected>No hay equipos operativos disponibles en depósito</option>';
+                if (btnConfirmarAsignarDeposito) btnConfirmarAsignarDeposito.disabled = true;
+            } else {
+                selectEquipoDeposito.innerHTML = '<option value="">Selecciona un equipo de depósito...</option>' +
+                    equiposDisponibles.map(eq => `
+                        <option value="${eq.id}">
+                            ${eq.codigo_patrimonial} — ${eq.marca || ''} ${eq.modelo || ''} (${(eq.categoria || 'EQUIPO').replace(/_/g, ' ')})
+                        </option>
+                    `).join('');
+                if (btnConfirmarAsignarDeposito) btnConfirmarAsignarDeposito.disabled = false;
+            }
+        } catch (err) {
+            console.error('Error al cargar equipos de depósito:', err);
+            selectEquipoDeposito.innerHTML = '<option value="" disabled>Error al cargar catálogo de activos</option>';
+        }
+    }
+
+    modalAsignarPuesto.classList.add('open');
+    modalAsignarPuesto.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function cerrarModalAsignarPuesto() {
+    if (!modalAsignarPuesto) return;
+    modalAsignarPuesto.classList.remove('open');
+    modalAsignarPuesto.style.display = 'none';
+    document.body.style.overflow = '';
+    puestoLibreSeleccionado = null;
+}
+
 function cerrarModalReubicar() {
     if (!modalReubicar) return;
     modalReubicar.classList.remove('open');
@@ -166,8 +231,10 @@ function configurarEventosModal() {
     }
 
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && modalResumen && modalResumen.classList.contains('open')) {
-            cerrarModalResumen();
+        if (e.key === 'Escape') {
+            if (modalResumen && modalResumen.classList.contains('open')) cerrarModalResumen();
+            if (modalReubicar && modalReubicar.classList.contains('open')) cerrarModalReubicar();
+            if (modalAsignarPuesto && modalAsignarPuesto.classList.contains('open')) cerrarModalAsignarPuesto();
         }
     });
 
@@ -197,6 +264,69 @@ function configurarEventosModal() {
         });
     }
 
+    
+    // Eventos Modal Asignar Puesto Libre
+    if (btnCerrarAsignarPuesto) btnCerrarAsignarPuesto.addEventListener('click', cerrarModalAsignarPuesto);
+    if (btnCancelarAsignarPuesto) btnCancelarAsignarPuesto.addEventListener('click', cerrarModalAsignarPuesto);
+    if (modalAsignarPuesto) {
+        modalAsignarPuesto.addEventListener('click', (e) => {
+            if (e.target === modalAsignarPuesto) cerrarModalAsignarPuesto();
+        });
+    }
+
+    if (btnIrCrearNuevoPuesto) {
+        btnIrCrearNuevoPuesto.addEventListener('click', () => {
+            if (!puestoLibreSeleccionado) return;
+            const { salaId, puestoId } = puestoLibreSeleccionado;
+            cerrarModalAsignarPuesto();
+            window.location.href = `inventario.html?accion=nuevo&sala_id=${salaId}&puesto_id=${puestoId}`;
+        });
+    }
+
+    if (formAsignarDeposito) {
+        formAsignarDeposito.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!puestoLibreSeleccionado) return;
+
+            const equipoId = parseInt(selectEquipoDeposito.value, 10);
+            if (!equipoId) {
+                Toast.warning('Selección Requerida', 'Debes seleccionar un activo disponible para asignar.');
+                return;
+            }
+
+            const btnSubmit = btnConfirmarAsignarDeposito;
+            const originalHtml = btnSubmit ? btnSubmit.innerHTML : '';
+            if (btnSubmit) {
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Guardando...';
+            }
+
+            try {
+                const res = await reubicarEquipo({
+                    equipo_id: equipoId,
+                    nueva_sala_id: puestoLibreSeleccionado.salaId,
+                    nuevo_puesto_id: puestoLibreSeleccionado.puestoId
+                });
+
+                if (res && res.success) {
+                    Toast.success('Equipo Asignado', `El activo fue instalado correctamente en el puesto ${puestoLibreSeleccionado.puestoCodigo}.`);
+                    cerrarModalAsignarPuesto();
+                    await cargarMapaUbicaciones();
+                } else {
+                    Toast.error('Error al Asignar', res?.message || 'No se pudo asignar el equipo.');
+                }
+            } catch (err) {
+                console.error('Error al asignar equipo de depósito:', err);
+                Toast.error('Error', err.message || 'Error de conexión.');
+            } finally {
+                if (btnSubmit) {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = originalHtml;
+                }
+            }
+        });
+    }
+
     if (formReubicar) {
         formReubicar.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -205,9 +335,10 @@ function configurarEventosModal() {
             const puestoVal = selectReubicarPuesto.value;
             const nuevoPuestoId = (puestoVal && puestoVal !== '') ? parseInt(puestoVal, 10) : null;
 
+            const originalReubicarHtml = btnConfirmarReubicar ? btnConfirmarReubicar.innerHTML : '';
             if (btnConfirmarReubicar) {
                 btnConfirmarReubicar.disabled = true;
-                btnConfirmarReubicar.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Reubicando...';
+                btnConfirmarReubicar.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Guardando...';
             }
 
             try {
@@ -229,9 +360,9 @@ function configurarEventosModal() {
                 console.error('Error al reubicar equipo:', err);
                 Toast.error('Error al Reubicar', err.message || 'Error de conexión.');
             } finally {
-                if (btnConfirmarReubicar) {
+                            if (btnConfirmarReubicar) {
                     btnConfirmarReubicar.disabled = false;
-                    btnConfirmarReubicar.innerHTML = '<i class="fa-solid fa-arrows-up-down-left-right"></i><span>Confirmar Reubicación</span>';
+                    btnConfirmarReubicar.innerHTML = originalReubicarHtml;
                 }
             }
         });
@@ -278,8 +409,10 @@ async function cargarMapaUbicaciones() {
             card.addEventListener('click', (e) => {
                 const salaId = e.currentTarget.getAttribute('data-sala-id');
                 const puestoId = e.currentTarget.getAttribute('data-puesto-id');
+                const salaNombre = e.currentTarget.getAttribute('data-sala-nombre');
+                const puestoCodigo = e.currentTarget.getAttribute('data-puesto-codigo');
                 if (salaId && puestoId) {
-                    window.location.href = `inventario.html?accion=nuevo&sala_id=${salaId}&puesto_id=${puestoId}`;
+                    abrirModalAsignarPuesto(salaId, puestoId, salaNombre, puestoCodigo);
                 }
             });
         });

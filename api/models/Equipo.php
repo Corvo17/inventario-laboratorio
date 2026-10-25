@@ -157,9 +157,19 @@ class Equipo {
             throw new RuntimeException("El número de serie '{$serial}' ya está registrado.", 409);
         }
 
-        $puesto_id = null;
+                $puesto_id = null;
         if (!empty($data['puesto_id']) && (int)$data['puesto_id'] > 0) {
             $puesto_id = (int)$data['puesto_id'];
+            $sala_id = (int)$data['sala_id'];
+
+            // Validar que el puesto pertenezca a la sala seleccionada
+            $stmtPuesto = $db->prepare("SELECT sala_id FROM puestos WHERE id = :puesto_id LIMIT 1");
+            $stmtPuesto->execute([':puesto_id' => $puesto_id]);
+            $puestoRow = $stmtPuesto->fetch();
+            if (!$puestoRow || (int)$puestoRow['sala_id'] !== $sala_id) {
+                throw new InvalidArgumentException("El puesto no pertenece a la sala seleccionada.", 400);
+            }
+
             $chk = $db->prepare("SELECT id FROM equipos WHERE puesto_id = :puesto_id LIMIT 1");
             $chk->execute([':puesto_id' => $puesto_id]);
             if ($chk->fetch()) {
@@ -259,6 +269,16 @@ class Equipo {
         $puesto_id = null;
         if (!empty($data['puesto_id']) && (int)$data['puesto_id'] > 0) {
             $puesto_id = (int)$data['puesto_id'];
+            $sala_id = (int)$data['sala_id'];
+
+            // Validar que el puesto pertenezca a la sala seleccionada
+            $stmtPuesto = $db->prepare("SELECT sala_id FROM puestos WHERE id = :puesto_id LIMIT 1");
+            $stmtPuesto->execute([':puesto_id' => $puesto_id]);
+            $puestoRow = $stmtPuesto->fetch();
+            if (!$puestoRow || (int)$puestoRow['sala_id'] !== $sala_id) {
+                throw new InvalidArgumentException("El puesto no pertenece a la sala seleccionada.", 400);
+            }
+
             $chk = $db->prepare("SELECT id FROM equipos WHERE puesto_id = :puesto_id AND id != :id LIMIT 1");
             $chk->execute([':puesto_id' => $puesto_id, ':id' => $id]);
             if ($chk->fetch()) {
@@ -755,18 +775,41 @@ class Equipo {
      */
     public static function darDeBaja(int $id, string $motivo = ''): bool {
         $db = Database::getConnection();
-        $stmt = $db->prepare("SELECT id, estado, puesto_id, notas FROM equipos WHERE id = :id LIMIT 1");
-        $stmt->execute([':id' => $id]);
-        $equipo = $stmt->fetch();
-        if (!$equipo) {
-            throw new RuntimeException("El equipo #{$id} no existe.", 404);
+
+        $db->beginTransaction();
+        try {
+            $stmt = $db->prepare("SELECT id, estado, puesto_id, notas FROM equipos WHERE id = :id LIMIT 1 FOR UPDATE");
+            $stmt->execute([':id' => $id]);
+            $equipo = $stmt->fetch();
+            if (!$equipo) {
+                throw new RuntimeException("El equipo #{$id} no existe.", 404);
+            }
+
+            $notaBaja = trim("BAJA PATRIMONIAL: " . $motivo . " [" . date('Y-m-d H:i') . "]");
+            $nuevasNotas = !empty($equipo['notas']) ? ($equipo['notas'] . "\n" . $notaBaja) : $notaBaja;
+
+            // 1. Actualizar estado del equipo a DE_BAJA y liberar puesto
+            $update = $db->prepare("UPDATE equipos SET estado = 'DE_BAJA', puesto_id = NULL, notas = :notas WHERE id = :id");
+            $update->execute([':notas' => $nuevasNotas, ':id' => $id]);
+
+            // 2. Si tiene préstamos activos, marcarlos automáticamente como DEVUELTO con fecha_devolucion_real = NOW()
+            $stmtPrestamos = $db->prepare("
+                UPDATE prestamos 
+                SET estado_prestamo = 'DEVUELTO', 
+                    fecha_devolucion_real = NOW(),
+                    observaciones = CONCAT(COALESCE(observaciones, ''), '\n[Devolución automática por baja patrimonial]')
+                WHERE equipo_id = :equipo_id AND estado_prestamo = 'ACTIVO'
+            ");
+            $stmtPrestamos->execute([':equipo_id' => $id]);
+
+            $db->commit();
+            return true;
+        } catch (\Throwable $e) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+            throw $e;
         }
-
-        $notaBaja = trim("BAJA PATRIMONIAL: " . $motivo . " [" . date('Y-m-d H:i') . "]");
-        $nuevasNotas = !empty($equipo['notas']) ? ($equipo['notas'] . "\n" . $notaBaja) : $notaBaja;
-
-        $update = $db->prepare("UPDATE equipos SET estado = 'DE_BAJA', puesto_id = NULL, notas = :notas WHERE id = :id");
-        return $update->execute([':notas' => $nuevasNotas, ':id' => $id]);
     }
 
 }
