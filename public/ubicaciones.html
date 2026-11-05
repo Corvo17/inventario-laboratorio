@@ -180,10 +180,6 @@
                         <span class="legend-dot operativo"></span>
                         <span>Operativo</span>
                     </div>
-                    <div class="legend-item">
-                        <span class="legend-dot prestamo"></span>
-                        <span>En Préstamo</span>
-                    </div>
                 </div>
             </div>
 
@@ -453,13 +449,21 @@
                             </select>
                         </div>
 
-                        <!-- Resumen y Acción Agregar Puesto -->
-                        <div id="info-puestos-sala" style="padding: 12px 14px; background: var(--bg-muted); border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+                        <!-- Resumen y Acciones de Sala / Agregar Puesto -->
+                        <div id="info-puestos-sala" style="padding: 12px 14px; background: var(--bg-muted); border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
                             <div>
                                 <span style="font-size: 11px; text-transform: uppercase; font-weight: 600; color: var(--text-muted);">Puestos Actuales:</span>
                                 <div id="lbl-total-puestos-sala" style="font-size: 16px; font-weight: 700; color: var(--text-primary); margin-top: 2px;">0 puestos</div>
                             </div>
-                            <div>
+                            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                <button type="button" id="btn-editar-sala-modal" class="btn btn-outline btn-sm" title="Renombrar o editar datos de la sala seleccionada">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                    <span>Renombrar Sala</span>
+                                </button>
+                                <button type="button" id="btn-eliminar-sala-modal" class="btn btn-danger btn-sm" title="Eliminar la sala seleccionada si no tiene equipos asignados">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                    <span>Eliminar Sala</span>
+                                </button>
                                 <button type="button" id="btn-agregar-puesto-accion" class="btn btn-primary btn-sm" title="Crear siguiente puesto en la sala">
                                     <i class="fa-solid fa-plus"></i>
                                     <span>Agregar Puesto</span>
@@ -491,6 +495,98 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Renombrar / Modificar Sala (#modal-editar-sala) -->
+    <div id="modal-editar-sala" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-editar-sala-title" style="display: none;">
+        <div class="modal-card" style="max-width: 500px;">
+            <div class="modal-header">
+                <div>
+                    <h3 id="modal-editar-sala-title" class="modal-title">Renombrar / Modificar Sala</h3>
+                    <p class="modal-description">Actualiza el nombre, ubicación o descripción del laboratorio sin alterar sus puestos físicos.</p>
+                </div>
+                <button type="button" id="btn-cerrar-editar-sala" class="btn-icon" data-modal-close aria-label="Cerrar modal">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="form-editar-sala">
+                <input type="hidden" id="edit-sala-id" name="id_sala" value="">
+                <div class="modal-body" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div class="form-group">
+                        <label for="edit-sala-nombre" class="form-label required">Nombre de la Sala / Laboratorio</label>
+                        <input type="text" id="edit-sala-nombre" name="nombre" class="form-input" placeholder="Ej: Laboratorio 1 - Programación" required>
+                    </div>
+
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="edit-sala-edificio" class="form-label">Edificio / Bloque</label>
+                            <input type="text" id="edit-sala-edificio" name="edificio" class="form-input" placeholder="Ej: Edificio A">
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-sala-piso" class="form-label">Piso / Nivel</label>
+                            <input type="text" id="edit-sala-piso" name="piso" class="form-input" placeholder="Ej: Piso 2">
+                        </div>
+                    </div>
+
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="edit-sala-descripcion" class="form-label">Descripción</label>
+                            <input type="text" id="edit-sala-descripcion" name="descripcion" class="form-input" placeholder="Ej: Sala para desarrollo de software">
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-sala-capacidad" class="form-label">Capacidad de Puestos</label>
+                            <input type="number" id="edit-sala-capacidad" name="capacidad_puestos" class="form-input" min="0" max="200" placeholder="Ej: 20">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+                    <button type="button" id="btn-cancelar-editar-sala" class="btn btn-outline" data-modal-close>Cancelar</button>
+                    <button type="submit" id="btn-guardar-editar-sala" class="btn btn-primary">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span>Guardar Cambios</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Confirmar Eliminación de Sala (#modal-confirmar-eliminar-sala) -->
+    <div id="modal-confirmar-eliminar-sala" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-eliminar-sala-title" style="display: none;">
+        <div class="modal-card" style="max-width: 460px;">
+            <div class="modal-header">
+                <div>
+                    <h3 id="modal-eliminar-sala-title" class="modal-title" style="color: #ef4444;">
+                        <i class="fa-solid fa-triangle-exclamation" style="margin-right: 6px;"></i>Confirmar Eliminación de Sala
+                    </h3>
+                    <p class="modal-description">Esta acción eliminará la sala y todos sus puestos vacíos de forma permanente.</p>
+                </div>
+                <button type="button" id="btn-cerrar-eliminar-sala" class="btn-icon" data-modal-close aria-label="Cerrar modal">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="modal-body" style="display: flex; flex-direction: column; gap: 1rem;">
+                <input type="hidden" id="delete-sala-id" value="">
+                <div style="padding: 12px 14px; background: var(--bg-muted); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    <div style="font-size: 11px; text-transform: uppercase; font-weight: 600; color: var(--text-muted);">Sala seleccionada</div>
+                    <div id="delete-sala-nombre" style="font-size: 15px; font-weight: 700; color: var(--text-primary); margin-top: 2px;">Laboratorio</div>
+                    <div id="delete-sala-detalle" style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">0 puestos configurados</div>
+                </div>
+
+                <div id="delete-sala-error-box" style="display: none; padding: 10px 12px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: var(--radius-sm); color: #ef4444; font-size: 12.5px; line-height: 1.4;">
+                </div>
+            </div>
+
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" id="btn-cancelar-eliminar-sala" class="btn btn-outline" data-modal-close>Cancelar</button>
+                <button type="button" id="btn-confirmar-eliminar-sala" class="btn btn-danger">
+                    <i class="fa-solid fa-trash-can"></i>
+                    <span>Sí, Eliminar Sala</span>
+                </button>
             </div>
         </div>
     </div>

@@ -23,7 +23,10 @@ DROP TABLE IF EXISTS `usuarios`;
 CREATE TABLE `salas` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `nombre` varchar(100) NOT NULL,
+  `edificio` varchar(100) DEFAULT NULL,
+  `piso` varchar(50) DEFAULT NULL,
   `descripcion` varchar(255) DEFAULT NULL,
+  `tipo` enum('LABORATORIO','ALMACEN') NOT NULL DEFAULT 'LABORATORIO',
   `capacidad_puestos` int(11) DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`)
@@ -51,7 +54,7 @@ CREATE TABLE `equipos` (
   `categoria` enum('PC_ESCRITORIO','ALL_IN_ONE','MONITOR','NETWORKING','PROYECTOR','PERIFERICO','COMPONENTE_INTERNO') NOT NULL,
   `marca` varchar(50) NOT NULL,
   `modelo` varchar(100) NOT NULL,
-  `estado` enum('OPERATIVO','EN_PRESTAMO','DE_BAJA') DEFAULT 'OPERATIVO',
+  `estado` enum('OPERATIVO','DE_BAJA') DEFAULT 'OPERATIVO',
   `sala_id` int(11) NOT NULL,
   `puesto_id` int(11) DEFAULT NULL,
   `cpu` varchar(100) DEFAULT NULL,
@@ -71,26 +74,7 @@ CREATE TABLE `equipos` (
   CONSTRAINT `equipos_ibfk_2` FOREIGN KEY (`puesto_id`) REFERENCES `puestos` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
--- 5.1 Tabla: prestamos
-CREATE TABLE `prestamos` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `equipo_id` int(11) NOT NULL,
-  `solicitante_nombre` varchar(120) NOT NULL,
-  `solicitante_identificacion` varchar(50) NOT NULL,
-  `destino_uso` varchar(150) NOT NULL,
-  `fecha_prestamo` datetime NOT NULL DEFAULT current_timestamp(),
-  `fecha_devolucion_estimada` date DEFAULT NULL,
-  `fecha_devolucion_real` datetime DEFAULT NULL,
-  `estado_prestamo` enum('ACTIVO','DEVUELTO') NOT NULL DEFAULT 'ACTIVO',
-  `observaciones` text DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `equipo_id` (`equipo_id`),
-  KEY `estado_prestamo` (`estado_prestamo`),
-  CONSTRAINT `prestamos_ibfk_1` FOREIGN KEY (`equipo_id`) REFERENCES `equipos` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- 5.2 Tabla: usuarios (Autenticación y Roles Jerárquicos)
+-- 6. Tabla: usuarios (Autenticación y Roles Jerárquicos)
 CREATE TABLE `usuarios` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `nombre` varchar(100) NOT NULL,
@@ -111,11 +95,11 @@ CREATE TABLE `usuarios` (
 -- ==========================================================
 
 -- Inserción de Salas (4)
-INSERT INTO `salas` (`id`, `nombre`, `descripcion`, `capacidad_puestos`, `created_at`) VALUES
-(1, 'Laboratorio 1 - Programación', 'Sala para desarrollo de software', 20, '2026-09-24 16:54:30'),
-(2, 'Laboratorio 2 - Redes', 'Mesas de trabajo y racks de conectividad', 16, '2026-09-24 16:54:30'),
-(3, 'Laboratorio de Hardware', 'Área de diagnóstico y reparación técnica', 6, '2026-09-24 16:54:30'),
-(4, 'Depósito Central', 'Reserva de piezas y componentes para sustitución técnica', 0, '2026-09-24 16:54:30');
+INSERT INTO `salas` (`id`, `nombre`, `edificio`, `piso`, `descripcion`, `tipo`, `capacidad_puestos`, `created_at`) VALUES
+(1, 'Laboratorio 1 - Programación', 'Edificio A', 'Piso 1', 'Sala para desarrollo de software', 'LABORATORIO', 20, '2026-09-24 16:54:30'),
+(2, 'Laboratorio 2 - Redes', 'Edificio A', 'Piso 2', 'Mesas de trabajo y racks de conectividad', 'LABORATORIO', 16, '2026-09-24 16:54:30'),
+(3, 'Laboratorio de Hardware', 'Edificio B', 'Piso 1', 'Área de diagnóstico y reparación técnica', 'LABORATORIO', 6, '2026-09-24 16:54:30'),
+(4, 'Depósito Central', 'Edificio Central', 'Planta Baja', 'Reserva de piezas y componentes para sustitución técnica', 'ALMACEN', 0, '2026-09-24 16:54:30');
 
 -- Inserción de Puestos Físicos (7)
 INSERT INTO `puestos` (`id`, `sala_id`, `codigo_puesto`, `fila`, `columna`, `created_at`) VALUES
@@ -130,21 +114,12 @@ INSERT INTO `puestos` (`id`, `sala_id`, `codigo_puesto`, `fila`, `columna`, `cre
 -- Inserción de Equipos y Activos (7)
 INSERT INTO `equipos` (`id`, `codigo_patrimonial`, `numero_serie`, `categoria`, `marca`, `modelo`, `estado`, `sala_id`, `puesto_id`, `cpu`, `ram_gb`, `almacenamiento`, `ip_asignada`, `mac_address`, `fecha_ingreso`, `notas`, `created_at`) VALUES
 (1, 'PAT-PC-001', '5CD2348X1Q', 'PC_ESCRITORIO', 'HP', 'ProDesk 400 G6', 'OPERATIVO', 1, 1, 'Intel Core i5-10500', 16, '512 GB SSD NVMe', '192.168.10.21', 'A0:B3:CC:11:22:33', '2024-01-15', 'Equipo principal del puesto 1', '2026-09-24 16:54:30'),
-(2, 'PAT-PC-002', '5CD2348X2W', 'PC_ESCRITORIO', 'HP', 'ProDesk 400 G6', 'OPERATIVO', 1, 2, 'Intel Core i5-10500', 32, '512 GB SSD NVMe', '192.168.10.22', 'A0:B3:CC:11:22:34', '2024-01-15', 'Equipo asignado con 32GB RAM', '2026-09-24 16:54:30'),
-(3, 'PAT-PC-003', 'MXL1029384', 'PC_ESCRITORIO', 'Dell', 'OptiPlex 7080', 'OPERATIVO', 1, 3, 'Intel Core i7-10700', 16, '1 TB SSD SATA', '192.168.10.23', 'B8:27:EB:44:55:66', '2024-02-01', 'Presenta reinicios intermitentes en carga de trabajo', '2026-09-24 16:54:30'),
-(4, 'PAT-AIO-001', 'W8823190LK', 'ALL_IN_ONE', 'Lenovo', 'IdeaCentre AIO 3', 'OPERATIVO', 3, 7, 'AMD Ryzen 5 5500U', 8, '256 GB SSD NVMe', '192.168.10.80', 'FC:FB:FB:01:02:03', '2024-03-10', 'En taller para mantenimiento preventivo y limpieza', '2026-09-24 16:54:30'),
-(5, 'PAT-SW-001', 'FOC18290Z9', 'NETWORKING', 'Cisco', 'Catalyst 2960-X', 'OPERATIVO', 2, NULL, NULL, NULL, NULL, '192.168.10.2', '00:1E:13:C2:A1:00', '2023-11-20', 'Switch principal Lab 2', '2026-09-24 16:54:30'),
-(6, 'PAT-PRY-001', 'V79F910023', 'PROYECTOR', 'Epson', 'PowerLite E20', 'EN_PRESTAMO', 1, NULL, NULL, NULL, NULL, NULL, NULL, '2024-01-10', 'En préstamo al departamento docente', '2026-09-24 16:54:30'),
+(2, 'PAT-PC-002', '5CD2348X2W', 'PC_ESCRITORIO', 'HP', 'ProDesk 400 G6', 'OPERATIVO', 1, 3, 'Intel Core i5-10500', 32, '512 GB SSD NVMe', '192.168.10.22', 'A0:B3:CC:11:22:34', '2024-01-15', 'Equipo asignado con 32GB RAM', '2026-09-24 16:54:30'),
+(3, 'PAT-PC-003', 'MXL1029384', 'PC_ESCRITORIO', 'Dell', 'OptiPlex 7080', 'OPERATIVO', 2, 5, 'Intel Core i7-10700', 16, '1 TB SSD SATA', '192.168.10.23', 'B8:27:EB:44:55:66', '2024-02-01', 'Presenta reinicios intermitentes en carga de trabajo', '2026-09-24 16:54:30'),
+(4, 'PAT-AIO-001', 'W8823190LK', 'ALL_IN_ONE', 'Lenovo', 'IdeaCentre AIO 3', 'OPERATIVO', 3, 7, 'AMD Ryzen 5 5550U', 8, '256 GB SSD NVMe', '192.168.10.80', 'FC:FB:FB:01:02:03', '2024-03-10', 'En taller para mantenimiento preventivo y limpieza', '2026-09-24 16:54:30'),
+(5, 'PAT-SW-001', 'FOC18290Z9', 'NETWORKING', 'Cisco', 'Catalyst 2960-X', 'OPERATIVO', 1, 2, NULL, NULL, NULL, '192.168.10.2', '00:1E:13:C2:A1:00', '2023-11-20', 'Switch principal Lab 1', '2026-09-24 16:54:30'),
+(6, 'PAT-PRY-001', 'V79F910023', 'PROYECTOR', 'Epson', 'PowerLite E20', 'OPERATIVO', 4, NULL, NULL, NULL, NULL, NULL, NULL, '2024-01-10', 'Proyector multimedia en depósito de reserva', '2026-09-24 16:54:30'),
 (7, 'PAT-REP-001', 'KVR32S22S8', 'COMPONENTE_INTERNO', 'Kingston', 'DDR4 3200MHz 8GB', 'OPERATIVO', 4, NULL, NULL, 8, NULL, NULL, NULL, '2024-05-12', 'Módulo de RAM de repuesto', '2026-09-24 16:54:30');
-
--- Inserción de Mantenimientos / Incidencias (2)
-
-
-
--- Inserción de Préstamos de Activos (2)
-INSERT INTO `prestamos` (`id`, `equipo_id`, `solicitante_nombre`, `solicitante_identificacion`, `destino_uso`, `fecha_prestamo`, `fecha_devolucion_estimada`, `fecha_devolucion_real`, `estado_prestamo`, `observaciones`) VALUES
-(1, 6, 'Prof. Carlos Mendoza', '14.582.910', 'Aula Magna / Defensa de Grado', '2026-09-24 09:00:00', '2026-09-25', '2026-10-16 15:31:05', 'DEVUELTO', 'Préstamo para proyecciones académicas y defensas.'),
-(2, 6, 'Prof. Carlos Mendoza', '14.582.910', 'Aula Magna / Defensa de Grado', '2026-10-16 15:31:05', '2026-10-25', NULL, 'ACTIVO', 'Préstamo renovado para proyecciones académicas y defensas de grado.');
 
 -- Inserción de Cuentas de Usuario Semilla (ADMIN vs OPERADOR)
 -- Clave Admin: Admin123* | Clave Operador: Operador123*

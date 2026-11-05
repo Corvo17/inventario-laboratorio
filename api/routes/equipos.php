@@ -33,12 +33,6 @@ if ($method === 'GET') {
     } elseif ($action === 'dar-de-baja') {
         AuthController::requireAdmin('Acción restringida: solo un Administrador puede autorizar la baja patrimonial de un activo.');
         EquipoController::darDeBaja($id);
-    } elseif ($action === 'registrar-prestamo') {
-        AuthController::requireAuth();
-        EquipoController::registrarPrestamo();
-    } elseif ($action === 'devolver-prestamo') {
-        AuthController::requireAuth();
-        EquipoController::devolverPrestamo();
     } else {
         AuthController::requireAuth();
         EquipoController::store();

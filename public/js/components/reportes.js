@@ -108,7 +108,7 @@ export async function imprimirActaEquipo(param, historialParam = null) {
             const res = await obtenerHojaVidaEquipo(id);
             if (res && res.success && res.data) {
                 equipo = res.data.equipo || {};
-                mantenimientos = res.data.historial_prestamos || [];
+                mantenimientos = res.data.timeline || [];
             } else {
                 const resDet = await obtenerDetalleEquipo(id);
                 if (resDet && resDet.success && resDet.data) {
@@ -118,8 +118,8 @@ export async function imprimirActaEquipo(param, historialParam = null) {
         } catch (e) {
             console.warn('Error al obtener datos completos del equipo para el acta:', e);
         }
-    } else if (equipo && (!mantenimientos || mantenimientos.length === 0) && equipo.historial_prestamos) {
-        mantenimientos = equipo.historial_prestamos;
+    } else if (equipo && (!mantenimientos || mantenimientos.length === 0) && equipo.timeline) {
+        mantenimientos = equipo.timeline;
     }
 
     if (!equipo || (!equipo.codigo_patrimonial && !equipo.id)) {
@@ -143,19 +143,19 @@ export async function imprimirActaEquipo(param, historialParam = null) {
     const qrDataUrl = generarQrDataUrl(payloadQr, 130, 130);
 
     const filasHistorial = Array.isArray(mantenimientos) && mantenimientos.length > 0
-        ? mantenimientos.map(p => `
+        ? mantenimientos.map(item => `
             <tr>
-                <td style="white-space: nowrap;">${p.fecha_prestamo ? p.fecha_prestamo.split(' ')[0] : 'N/A'}</td>
-                <td><strong>${p.solicitante_nombre || 'Docente / Solicitante'}</strong><br><small style="color: #666;">C.I.: ${p.solicitante_identificacion || 'N/A'}</small></td>
-                <td>${p.destino_uso || 'Área Académica'}</td>
-                <td><span style="display: inline-block; padding: 2px 6px; font-size: 8pt; font-weight: bold; border-radius: 3px; background: ${p.estado_prestamo === 'ACTIVO' ? '#fff3cd; color: #856404; border: 1px solid #ffeeba' : '#d4edda; color: #155724; border: 1px solid #c3e6cb'};">${p.estado_prestamo === 'ACTIVO' ? 'ACTIVO' : 'DEVUELTO'}</span></td>
-                <td>${p.fecha_devolucion_real ? p.fecha_devolucion_real.split(' ')[0] : (p.fecha_devolucion_estimada ? 'Estimada: ' + p.fecha_devolucion_estimada : 'Pendiente / En custodia')}</td>
+                <td style="white-space: nowrap;">${item.fecha ? item.fecha.split(' ')[0] : 'N/A'}</td>
+                <td><strong>${item.titulo || item.tipo || 'Registro Patrimonial'}</strong></td>
+                <td>${item.ubicacion || equipo.sala_nombre || 'Laboratorio'}</td>
+                <td><span style="display: inline-block; padding: 2px 6px; font-size: 8pt; font-weight: bold; border-radius: 3px; background: ${item.estado === 'DE_BAJA' ? '#f4f4f5; color: #52525b; border: 1px solid #e4e4e7' : '#d4edda; color: #155724; border: 1px solid #c3e6cb'};">${item.estado || 'OPERATIVO'}</span></td>
+                <td>${item.descripcion || 'Evento registrado en el sistema'}</td>
             </tr>
         `).join('')
         : `
             <tr>
                 <td colspan="5" style="text-align: center; color: #555; padding: 14px;">
-                    Sin préstamos externos registrados. Activo en custodia directa del laboratorio.
+                    Activo en custodia directa del laboratorio (${equipo.sala_nombre || 'Laboratorio'}).
                 </td>
             </tr>
         `;
@@ -379,16 +379,16 @@ export async function imprimirActaEquipo(param, historialParam = null) {
             </tr>
         </table>
 
-        <!-- Historial de Mantenimientos e Incidencias -->
-        <div class="section-title">3. Trazabilidad Patrimonial y Control de Préstamos</div>
+        <!-- Trazabilidad Patrimonial -->
+        <div class="section-title">3. Trazabilidad e Historial Patrimonial</div>
         <table class="history-table">
             <thead>
                 <tr>
-                    <th style="width: 16%;">Fecha Préstamo</th>
-                    <th style="width: 26%;">Solicitante / C.I.</th>
-                    <th style="width: 22%;">Destino / Uso</th>
-                    <th style="width: 16%;">Estado</th>
-                    <th style="width: 20%;">Fecha Devolución</th>
+                    <th style="width: 16%;">Fecha</th>
+                    <th style="width: 24%;">Evento</th>
+                    <th style="width: 22%;">Ubicación</th>
+                    <th style="width: 14%;">Estado</th>
+                    <th style="width: 24%;">Detalle</th>
                 </tr>
             </thead>
             <tbody>

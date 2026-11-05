@@ -93,8 +93,15 @@ export async function verificarSesion() {
             credentials: 'include'
         });
 
+        if (response.status === 401) {
+            cachedUser = null;
+            localStorage.removeItem('auth_user');
+            window.location.href = 'login.html';
+            return null;
+        }
+
         if (!response.ok) {
-            throw new Error(`Sesión no autorizada (HTTP ${response.status})`);
+            throw new Error(`Error del servidor (HTTP ${response.status})`);
         }
 
         const json = await response.json();
@@ -112,10 +119,14 @@ export async function verificarSesion() {
 
         return cachedUser;
     } catch (error) {
-        console.warn('Sesión no válida o expirada:', error.message);
-        cachedUser = null;
-        localStorage.removeItem('auth_user');
-        window.location.href = 'login.html';
+        console.warn('Advertencia al verificar sesión con el servidor:', error.message);
+        const fallbackUser = obtenerUsuarioActual();
+        if (fallbackUser) {
+            actualizarSidebarUsuario(fallbackUser);
+            aplicarPermisosDOM(fallbackUser);
+            inyectarModalConfiguracion(fallbackUser);
+            return fallbackUser;
+        }
         return null;
     }
 }
@@ -212,7 +223,7 @@ export function inyectarModalConfiguracion(user = null) {
             <div style="padding: 18px 22px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; background: var(--bg-muted);">
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <div style="width: 32px; height: 32px; border-radius: 8px; background: var(--bg-surface); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; color: var(--text-primary);">
-                        <i class="fa-solid fa-sliders" style="font-size: 14px;"></i>
+                        <i class="fa-solid fa-gear" style="font-size: 14px;"></i>
                     </div>
                     <div>
                         <h3 style="margin: 0; font-size: 1rem; font-weight: 600; color: var(--text-primary);">Configuración & Sistema</h3>
@@ -262,7 +273,7 @@ export function inyectarModalConfiguracion(user = null) {
                             <div>
                                 <div style="font-weight: 600; font-size: 0.875rem; color: var(--text-primary);">Respaldo SQL en 1 Clic</div>
                                 <div style="font-size: 0.78125rem; color: var(--text-muted); line-height: 1.4; margin-top: 2px;">
-                                    Genera un volcado estructurado (.sql) de todas las tablas: salas, puestos físicos, activos, préstamos y usuarios.
+                                    Genera un volcado estructurado (.sql) de todas las tablas: salas, puestos físicos, activos y usuarios.
                                 </div>
                             </div>
                         </div>

@@ -34,6 +34,20 @@ class Database {
             try {
                 self::$instance = new PDO($dsn, DB_USER, DB_PASS, $options);
             } catch (PDOException $e) {
+                // Fallback de auto-recuperación local: si el servicio MySQL de XAMPP está detenido, iniciarlo y reintentar
+                $mysqldPath = 'C:\\xampp\\mysql\\bin\\mysqld.exe';
+                $myIniPath  = 'C:\\xampp\\mysql\\bin\\my.ini';
+                if (PHP_OS_FAMILY === 'Windows' && file_exists($mysqldPath)) {
+                    @pclose(@popen('start /B "" "' . $mysqldPath . '" --defaults-file="' . $myIniPath . '" --standalone >NUL 2>&1', 'r'));
+                    usleep(2200000); // Esperar 2.2s a que el socket 3306 esté disponible
+                    try {
+                        self::$instance = new PDO($dsn, DB_USER, DB_PASS, $options);
+                        return self::$instance;
+                    } catch (PDOException $retryEx) {
+                        $e = $retryEx;
+                    }
+                }
+
                 self::sendJson([
                     'success' => false,
                     'message' => 'Error de conexión a la base de datos: ' . $e->getMessage()

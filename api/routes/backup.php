@@ -31,7 +31,7 @@ try {
     $db = Database::getConnection();
 
     // Tablas en orden adecuado de dependencia para FOREIGN KEYS
-    $tablas = ['salas', 'puestos', 'equipos', 'prestamos', 'usuarios', 'mantenimientos'];
+    $tablas = ['salas', 'puestos', 'equipos', 'usuarios', 'mantenimientos'];
 
     // Obtener tablas reales existentes en la base de datos
     $stmtTablas = $db->query("SHOW TABLES");

@@ -1,7 +1,7 @@
 -- ==========================================================
 -- SISTEMA DE GESTIÓN E INVENTARIO DE LABORATORIOS DE CÓMPUTO
 -- Esquema DDL Maestro de Base de Datos: lab_inventario
--- Tablas Activas (5): salas, puestos, equipos, prestamos, usuarios
+-- Tablas Activas (4): salas, puestos, equipos, usuarios
 -- Charset: utf8mb4 | Collation: utf8mb4_unicode_ci
 -- Motor: InnoDB (Transaccional, Integridad Referencial)
 -- ==========================================================
@@ -26,7 +26,10 @@ DROP TABLE IF EXISTS `usuarios`;
 CREATE TABLE `salas` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `nombre` varchar(100) NOT NULL,
+  `edificio` varchar(100) DEFAULT NULL,
+  `piso` varchar(50) DEFAULT NULL,
   `descripcion` varchar(255) DEFAULT NULL,
+  `tipo` enum('LABORATORIO','ALMACEN') NOT NULL DEFAULT 'LABORATORIO',
   `capacidad_puestos` int(11) DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`)
@@ -58,7 +61,7 @@ CREATE TABLE `equipos` (
   `categoria` enum('PC_ESCRITORIO','ALL_IN_ONE','MONITOR','NETWORKING','PROYECTOR','PERIFERICO','COMPONENTE_INTERNO') NOT NULL,
   `marca` varchar(50) NOT NULL,
   `modelo` varchar(100) NOT NULL,
-  `estado` enum('OPERATIVO','EN_PRESTAMO','DE_BAJA') DEFAULT 'OPERATIVO',
+  `estado` enum('OPERATIVO','DE_BAJA') DEFAULT 'OPERATIVO',
   `sala_id` int(11) NOT NULL,
   `puesto_id` int(11) DEFAULT NULL,
   `cpu` varchar(100) DEFAULT NULL,
@@ -79,27 +82,7 @@ CREATE TABLE `equipos` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------
--- 6. Tabla: prestamos (Control y trazabilidad de préstamos externos)
--- ----------------------------------------------------------
-CREATE TABLE `prestamos` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `equipo_id` int(11) NOT NULL,
-  `solicitante_nombre` varchar(120) NOT NULL,
-  `solicitante_identificacion` varchar(50) NOT NULL,
-  `destino_uso` varchar(150) NOT NULL,
-  `fecha_prestamo` datetime NOT NULL DEFAULT current_timestamp(),
-  `fecha_devolucion_estimada` date DEFAULT NULL,
-  `fecha_devolucion_real` datetime DEFAULT NULL,
-  `estado_prestamo` enum('ACTIVO','DEVUELTO') NOT NULL DEFAULT 'ACTIVO',
-  `observaciones` text DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `equipo_id` (`equipo_id`),
-  KEY `estado_prestamo` (`estado_prestamo`),
-  CONSTRAINT `prestamos_ibfk_1` FOREIGN KEY (`equipo_id`) REFERENCES `equipos` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ----------------------------------------------------------
--- 7. Tabla: usuarios (Cuentas y roles jerárquicos ADMIN / OPERADOR)
+-- 6. Tabla: usuarios (Cuentas y roles jerárquicos ADMIN / OPERADOR)
 -- ----------------------------------------------------------
 CREATE TABLE `usuarios` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -124,10 +107,10 @@ INSERT INTO `usuarios` (`id`, `nombre`, `email`, `password`, `rol`, `activo`, `u
 (2, 'Custodio Técnico', 'operador@lab.local', '$2y$10$Kk6dYp/f3V79g2pEsmzKku0N.v95hS5.k8tV11.bEw7bVbT/vM0Wy', 'OPERADOR', 1, NULL, CURRENT_TIMESTAMP);
 
 -- Salas Base
-INSERT INTO `salas` (`id`, `nombre`, `descripcion`, `capacidad_puestos`, `created_at`) VALUES
-(1, 'Laboratorio 1 - Programación', 'Sala para desarrollo de software y computación gráfica', 20, CURRENT_TIMESTAMP),
-(2, 'Laboratorio 2 - Redes y Hardware', 'Mesas de trabajo, bancos de pruebas y racks de conectividad', 16, CURRENT_TIMESTAMP),
-(3, 'Depósito Central y Reserva', 'Almacén para equipos flotantes, repuestos y reserva técnica', 0, CURRENT_TIMESTAMP);
+INSERT INTO `salas` (`id`, `nombre`, `edificio`, `piso`, `descripcion`, `tipo`, `capacidad_puestos`, `created_at`) VALUES
+(1, 'Laboratorio 1 - Programación', 'Edificio A', 'Piso 1', 'Sala para desarrollo de software y computación gráfica', 'LABORATORIO', 20, CURRENT_TIMESTAMP),
+(2, 'Laboratorio 2 - Redes y Hardware', 'Edificio A', 'Piso 2', 'Mesas de trabajo, bancos de pruebas y racks de conectividad', 'LABORATORIO', 16, CURRENT_TIMESTAMP),
+(3, 'Depósito Central y Reserva', 'Edificio Central', 'Planta Baja', 'Almacén para equipos flotantes, repuestos y reserva técnica', 'ALMACEN', 0, CURRENT_TIMESTAMP);
 
 -- Puestos Base Laboratorio 1
 INSERT INTO `puestos` (`id`, `sala_id`, `codigo_puesto`, `fila`, `columna`, `created_at`) VALUES

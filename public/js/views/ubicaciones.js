@@ -1,4 +1,4 @@
-import { verificarSesion, aplicarPermisosDOM } from '../services/auth.service.js';
+import { verificarSesion, aplicarPermisosDOM, obtenerUsuarioActual, actualizarSidebarUsuario } from '../services/auth.service.js';
 import { initThemeToggle } from '../components/theme-toggle.js';
 import { initCommandPalette } from '../components/command-palette.js';
 /**
@@ -16,6 +16,8 @@ import {
     obtenerEquipos,
     reubicarEquipo,
     crearSala,
+    actualizarSala,
+    eliminarSala,
     agregarPuesto,
     eliminarPuesto
 } from '../services/api.service.js';
@@ -88,6 +90,27 @@ const lblTotalPuestosSala = document.getElementById('lbl-total-puestos-sala');
 const btnAgregarPuestoAccion = document.getElementById('btn-agregar-puesto-accion');
 const selectRetirarPuesto = document.getElementById('select-retirar-puesto');
 const btnRetirarPuestoAccion = document.getElementById('btn-retirar-puesto-accion');
+const btnEditarSalaModal = document.getElementById('btn-editar-sala-modal');
+const btnEliminarSalaModal = document.getElementById('btn-eliminar-sala-modal');
+
+// Elementos para Modal Renombrar / Modificar Sala (ADMIN)
+const modalEditarSala = document.getElementById('modal-editar-sala');
+const formEditarSala = document.getElementById('form-editar-sala');
+const editSalaId = document.getElementById('edit-sala-id');
+const editSalaNombre = document.getElementById('edit-sala-nombre');
+const editSalaEdificio = document.getElementById('edit-sala-edificio');
+const editSalaPiso = document.getElementById('edit-sala-piso');
+const editSalaDescripcion = document.getElementById('edit-sala-descripcion');
+const editSalaCapacidad = document.getElementById('edit-sala-capacidad');
+const btnGuardarEditarSala = document.getElementById('btn-guardar-editar-sala');
+
+// Elementos para Modal Confirmar Eliminación de Sala (ADMIN)
+const modalConfirmarEliminarSala = document.getElementById('modal-confirmar-eliminar-sala');
+const deleteSalaId = document.getElementById('delete-sala-id');
+const deleteSalaNombre = document.getElementById('delete-sala-nombre');
+const deleteSalaDetalle = document.getElementById('delete-sala-detalle');
+const deleteSalaErrorBox = document.getElementById('delete-sala-error-box');
+const btnConfirmarEliminarSala = document.getElementById('btn-confirmar-eliminar-sala');
 
 let puestoLibreSeleccionado = null;
 
@@ -103,13 +126,21 @@ const btnConfirmarReubicar = document.getElementById('btn-confirmar-reubicar');
 
 
 document.addEventListener('DOMContentLoaded', async () => {
-    const user = await verificarSesion();
-    if (!user) return;
-    aplicarPermisosDOM(user);
+    const cachedUser = obtenerUsuarioActual();
+    if (cachedUser) {
+        actualizarSidebarUsuario(cachedUser);
+        aplicarPermisosDOM(cachedUser);
+    }
     actualizarFechaEncabezado();
     cargarMapaUbicaciones();
     configurarEventosModal();
     configurarGestionSalas();
+
+    verificarSesion().then(user => {
+        if (user) {
+            aplicarPermisosDOM(user);
+        }
+    }).catch(err => console.warn('Verificación de sesión:', err));
 });
 
 /**
@@ -496,15 +527,54 @@ async function cargarMapaUbicaciones() {
             });
         });
 
+        // Eventos ADMIN: Editar / Renombrar sala desde la tarjeta del mapa
+        document.querySelectorAll('.btn-editar-sala').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const salaId = parseInt(btn.getAttribute('data-sala-id'), 10);
+                abrirModalEditarSala(salaId);
+            });
+        });
+
+        // Eventos ADMIN: Eliminar sala desde la tarjeta del mapa
+        document.querySelectorAll('.btn-eliminar-sala').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const salaId = parseInt(btn.getAttribute('data-sala-id'), 10);
+                abrirModalEliminarSala(salaId);
+            });
+        });
+
+        // Reaplicar visibilidad por rol (ADMIN vs OPERADOR) en elementos dinámicos
+        aplicarPermisosDOM();
+
     } catch (err) {
         console.error('Error al cargar mapa de ubicaciones:', err);
+        if (statTotalSalas) statTotalSalas.textContent = '0';
+        if (statTotalPuestos) statTotalPuestos.textContent = '0';
+        if (statPuestosOcupados) statPuestosOcupados.textContent = '0';
+        if (statPuestosLibres) statPuestosLibres.textContent = '0';
+        if (statPctOcupacion) statPctOcupacion.textContent = '0%';
+
         contenedorSalas.innerHTML = `
-            <div style="text-align: center; padding: 3rem; color: #ef4444; background: var(--bg-surface); border: 1px solid #fecaca; border-radius: var(--radius-md);">
+            <div style="text-align: center; padding: 3rem; color: #ef4444; background: var(--bg-surface); border: 1px dashed rgba(239, 68, 68, 0.4); border-radius: var(--radius-md);">
                 <i class="fa-solid fa-circle-exclamation" style="font-size: 32px; margin-bottom: 10px;"></i>
-                <div style="font-weight: 600; font-size: 14px;">Error al conectar con la API de ubicaciones</div>
-                <div style="font-size: 12px; margin-top: 4px; color: var(--text-secondary);">${err.message || 'Verifica que el backend esté activo.'}</div>
+                <div style="font-weight: 600; font-size: 14px; color: var(--text-primary);">Error al conectar con la API de ubicaciones</div>
+                <div style="font-size: 12px; margin-top: 4px; margin-bottom: 14px; color: var(--text-secondary);">${err.message || 'Verifica que el backend y MySQL estén activos.'}</div>
+                <button type="button" id="btn-retry-ubicaciones" class="btn btn-primary btn-sm">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span>Reintentar Carga</span>
+                </button>
             </div>
         `;
+
+        const btnRetry = document.getElementById('btn-retry-ubicaciones');
+        if (btnRetry) {
+            btnRetry.addEventListener('click', () => cargarMapaUbicaciones());
+        }
+        if (Toast && typeof Toast.error === 'function') {
+            Toast.error('Error de Conexión', err.message || 'No se pudo cargar el mapa de ubicaciones.');
+        }
     }
 }
 
@@ -653,7 +723,16 @@ function renderizarTarjetaLaboratorio(sala) {
                     </div>
                 </div>
 
-                <div class="sala-mapa-meta sala-stats" style="display: flex; align-items: center; gap: 12px;">
+                <div class="sala-mapa-meta sala-stats" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <div data-role="ADMIN" style="display: inline-flex; align-items: center; gap: 6px;">
+                        <button type="button" class="btn btn-outline btn-sm btn-editar-sala" data-sala-id="${sala.id}" title="Renombrar o modificar datos de esta sala">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                            <span>Editar</span>
+                        </button>
+                        <button type="button" class="btn btn-outline btn-sm btn-eliminar-sala" data-sala-id="${sala.id}" title="Eliminar esta sala (requiere 0 equipos asignados)" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.3);">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
                     <button type="button" class="btn btn-outline btn-sm btn-qr-sala" data-sala-id="${sala.id}" title="Imprimir planilla de etiquetas QR de esta sala">
                         <i class="fa-solid fa-qrcode"></i>
                         <span>Etiquetas QR</span>
@@ -734,7 +813,13 @@ function renderizarTarjetaDeposito(sala) {
                     </div>
                 </div>
 
-                <div class="sala-mapa-meta sala-stats" style="display: flex; align-items: center; gap: 12px;">
+                <div class="sala-mapa-meta sala-stats" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <div data-role="ADMIN" style="display: inline-flex; align-items: center; gap: 6px;">
+                        <button type="button" class="btn btn-outline btn-sm btn-editar-sala" data-sala-id="${sala.id}" title="Renombrar o modificar datos del depósito">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                            <span>Editar</span>
+                        </button>
+                    </div>
                     <button type="button" class="btn btn-outline btn-sm btn-qr-sala" data-sala-id="${sala.id}" title="Imprimir planilla de etiquetas QR de esta sala">
                         <i class="fa-solid fa-qrcode"></i>
                         <span>Etiquetas QR</span>
@@ -832,9 +917,7 @@ function cerrarModalResumen() {
 function getBadgeStyle(estado) {
     switch (estado) {
         case 'OPERATIVO': return { bg: '#ecfdf5', color: '#065f46' };
-        case 'CON_FALLA': return { bg: '#fef2f2', color: '#991b1b' };
-        case 'EN_MANTENIMIENTO': return { bg: '#fffbeb', color: '#92400e' };
-        case 'EN_PRESTAMO': return { bg: '#eff6ff', color: '#1e40af' };
+        case 'DE_BAJA': return { bg: '#f4f4f5', color: '#52525b' };
         default: return { bg: '#f4f4f5', color: '#52525b' };
     }
 }
@@ -842,9 +925,6 @@ function getBadgeStyle(estado) {
 function getEstadoDotColor(estado) {
     switch (estado) {
         case 'OPERATIVO': return '#10b981';
-        case 'CON_FALLA': return '#ef4444';
-        case 'EN_MANTENIMIENTO': return '#f59e0b';
-        case 'EN_PRESTAMO': return '#3b82f6';
         case 'DE_BAJA': return '#71717a';
         default: return '#10b981';
     }
@@ -853,9 +933,6 @@ function getEstadoDotColor(estado) {
 function formatearEstadoCorto(estado) {
     switch (estado) {
         case 'OPERATIVO': return 'Operativo';
-        case 'CON_FALLA': return 'Con Falla';
-        case 'EN_MANTENIMIENTO': return 'En Taller';
-        case 'EN_PRESTAMO': return 'Préstamo';
         case 'DE_BAJA': return 'De Baja';
         default: return estado;
     }
@@ -864,9 +941,7 @@ function formatearEstadoCorto(estado) {
 function getStatusClass(estado) {
     switch (estado) {
         case 'OPERATIVO': return 'status-operativo';
-        case 'CON_FALLA': return 'status-falla';
-        case 'EN_MANTENIMIENTO': return 'status-mantenimiento';
-        case 'EN_PRESTAMO': return 'status-prestamo';
+        case 'DE_BAJA': return 'status-baja';
         default: return 'status-operativo';
     }
 }
@@ -1117,6 +1192,192 @@ function configurarGestionSalas() {
             }
         });
     }
+
+    // Botón Renombrar Sala desde el Modal de Administración de Espacios
+    if (btnEditarSalaModal) {
+        btnEditarSalaModal.addEventListener('click', () => {
+            const salaId = parseInt(selectGestionSala?.value, 10);
+            if (!salaId) {
+                Toast.warning('Atención', 'Selecciona primero una sala para editar.');
+                return;
+            }
+            abrirModalEditarSala(salaId);
+        });
+    }
+
+    // Botón Eliminar Sala desde el Modal de Administración de Espacios
+    if (btnEliminarSalaModal) {
+        btnEliminarSalaModal.addEventListener('click', () => {
+            const salaId = parseInt(selectGestionSala?.value, 10);
+            if (!salaId) {
+                Toast.warning('Atención', 'Selecciona primero una sala para eliminar.');
+                return;
+            }
+            abrirModalEliminarSala(salaId);
+        });
+    }
+
+    // Submit: Editar / Renombrar Sala
+    if (formEditarSala) {
+        formEditarSala.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const idSala = parseInt(editSalaId?.value, 10);
+            const nombre = editSalaNombre?.value.trim() || '';
+            const edificio = editSalaEdificio?.value.trim() || '';
+            const piso = editSalaPiso?.value.trim() || '';
+            const descripcion = editSalaDescripcion?.value.trim() || '';
+            const capacidadVal = editSalaCapacidad?.value;
+            const capacidad = capacidadVal !== '' && capacidadVal !== undefined ? parseInt(capacidadVal, 10) : null;
+
+            if (!idSala || !nombre) {
+                Toast.warning('Campo Requerido', 'El nombre de la sala es obligatorio.');
+                return;
+            }
+
+            const btn = btnGuardarEditarSala;
+            const originalHtml = btn ? btn.innerHTML : '';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Guardando...';
+            }
+
+            try {
+                const res = await actualizarSala({
+                    id_sala: idSala,
+                    nombre,
+                    edificio,
+                    piso,
+                    descripcion,
+                    capacidad_puestos: capacidad
+                });
+
+                if (res && res.success) {
+                    Toast.success('Sala Actualizada', `Los datos de "${nombre}" se actualizaron correctamente.`);
+                    cerrarModalEditarSala();
+                    await cargarMapaUbicaciones();
+                    poblarSelectorSalasGestion(idSala);
+                } else {
+                    Toast.error('Error al Actualizar', res?.message || 'No se pudo actualizar la sala.');
+                }
+            } catch (err) {
+                console.error('Error al actualizar sala:', err);
+                Toast.error(err.status === 409 ? 'Nombre Duplicado' : 'Error', err.message || 'No se pudo actualizar la sala.');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                }
+            }
+        });
+    }
+
+    // Botón Confirmar Eliminación de Sala
+    if (btnConfirmarEliminarSala) {
+        btnConfirmarEliminarSala.addEventListener('click', async () => {
+            const idSala = parseInt(deleteSalaId?.value, 10);
+            if (!idSala) return;
+
+            const btn = btnConfirmarEliminarSala;
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Eliminando...';
+
+            if (deleteSalaErrorBox) {
+                deleteSalaErrorBox.style.display = 'none';
+                deleteSalaErrorBox.textContent = '';
+            }
+
+            try {
+                const res = await eliminarSala(idSala);
+                if (res && res.success) {
+                    Toast.success('Sala Eliminada', res.message || 'La sala fue eliminada exitosamente.');
+                    cerrarModalEliminarSala();
+                    await cargarMapaUbicaciones();
+                    poblarSelectorSalasGestion();
+                } else {
+                    Toast.error('No se puede eliminar', res?.message || 'Error al eliminar la sala.');
+                }
+            } catch (err) {
+                console.error('Error al eliminar sala:', err);
+                if (deleteSalaErrorBox) {
+                    deleteSalaErrorBox.style.display = 'block';
+                    deleteSalaErrorBox.innerHTML = `<i class="fa-solid fa-circle-exclamation" style="margin-right: 6px;"></i><strong>Operación rechazada:</strong> ${err.message}`;
+                }
+                Toast.error('Restricción de Integridad', err.message || 'No se puede eliminar la sala.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        });
+    }
+}
+
+function abrirModalEditarSala(salaId) {
+    if (!modalEditarSala) return;
+    const sala = (mapaCache || []).find(s => Number(s.id) === Number(salaId));
+    if (!sala) {
+        Toast.warning('Sala no encontrada', 'No se encontraron los datos de la sala seleccionada.');
+        return;
+    }
+
+    if (editSalaId) editSalaId.value = sala.id;
+    if (editSalaNombre) editSalaNombre.value = sala.nombre || '';
+    if (editSalaEdificio) editSalaEdificio.value = sala.edificio || '';
+    if (editSalaPiso) editSalaPiso.value = sala.piso || '';
+    if (editSalaDescripcion) editSalaDescripcion.value = sala.descripcion || '';
+    if (editSalaCapacidad) editSalaCapacidad.value = sala.capacidad_puestos ?? 0;
+
+    modalEditarSala.style.display = 'flex';
+    modalEditarSala.classList.add('open');
+    document.body.style.overflow = 'hidden';
+}
+
+function cerrarModalEditarSala() {
+    if (!modalEditarSala) return;
+    modalEditarSala.classList.remove('open');
+    modalEditarSala.style.display = 'none';
+    if (!modalGestionSalas || !modalGestionSalas.classList.contains('open')) {
+        document.body.style.overflow = '';
+    }
+}
+
+function abrirModalEliminarSala(salaId) {
+    if (!modalConfirmarEliminarSala) return;
+    const sala = (mapaCache || []).find(s => Number(s.id) === Number(salaId));
+    if (!sala) {
+        Toast.warning('Sala no encontrada', 'No se encontraron los datos de la sala seleccionada.');
+        return;
+    }
+
+    if (deleteSalaId) deleteSalaId.value = sala.id;
+    if (deleteSalaNombre) deleteSalaNombre.textContent = sala.nombre;
+
+    const totalPuestos = sala.puestos?.length || 0;
+    const ocupados = (sala.puestos || []).filter(p => p.ocupado || p.equipo).length;
+    const sinPuesto = (sala.equipos_sin_puesto || []).length;
+    const totalEquipos = ocupados + sinPuesto;
+
+    if (deleteSalaDetalle) {
+        deleteSalaDetalle.textContent = `${totalPuestos} puesto(s) físico(s) • ${totalEquipos} equipo(s) asignado(s)`;
+    }
+
+    if (deleteSalaErrorBox) {
+        deleteSalaErrorBox.style.display = 'none';
+        deleteSalaErrorBox.textContent = '';
+    }
+
+    modalConfirmarEliminarSala.style.display = 'flex';
+    modalConfirmarEliminarSala.classList.add('open');
+    document.body.style.overflow = 'hidden';
+}
+
+function cerrarModalEliminarSala() {
+    if (!modalConfirmarEliminarSala) return;
+    modalConfirmarEliminarSala.classList.remove('open');
+    modalConfirmarEliminarSala.style.display = 'none';
+    if (!modalGestionSalas || !modalGestionSalas.classList.contains('open')) {
+        document.body.style.overflow = '';
+    }
 }
 
 // Delegación universal para cierre de modales vía atributo data-modal-close
@@ -1127,6 +1388,10 @@ document.addEventListener('click', (e) => {
         if (modal) {
             if (modal.id === 'modal-gestion-salas') {
                 cerrarModalGestionSalas();
+            } else if (modal.id === 'modal-editar-sala') {
+                cerrarModalEditarSala();
+            } else if (modal.id === 'modal-confirmar-eliminar-sala') {
+                cerrarModalEliminarSala();
             } else if (modal.id === 'modal-asignar-puesto-libre') {
                 cerrarModalAsignarPuesto();
             } else if (modal.id === 'modal-reubicar-equipo') {
@@ -1145,6 +1410,14 @@ document.addEventListener('click', (e) => {
 // Cierre accesible con tecla Escape
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+        if (modalConfirmarEliminarSala && modalConfirmarEliminarSala.classList.contains('open')) {
+            cerrarModalEliminarSala();
+            return;
+        }
+        if (modalEditarSala && modalEditarSala.classList.contains('open')) {
+            cerrarModalEditarSala();
+            return;
+        }
         if (modalGestionSalas && modalGestionSalas.classList.contains('open')) cerrarModalGestionSalas();
         if (modalAsignarPuesto && modalAsignarPuesto.classList.contains('open')) cerrarModalAsignarPuesto();
         if (modalReubicar && modalReubicar.classList.contains('open')) cerrarModalReubicar();

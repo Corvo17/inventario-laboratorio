@@ -132,6 +132,39 @@ class Equipo {
         return $equipo;
     }
 
+    /**
+     * Obtiene el ID de la sala de Almacén / Depósito Central con fallback seguro de esquema
+     */
+    public static function getDepositoSalaId(PDO $db): ?int {
+        try {
+            $stmt = $db->query("
+                SELECT id FROM salas 
+                WHERE tipo = 'ALMACEN' 
+                   OR LOWER(nombre) LIKE '%depósito%' 
+                   OR LOWER(nombre) LIKE '%deposito%' 
+                ORDER BY (tipo = 'ALMACEN') DESC, id ASC 
+                LIMIT 1
+            ");
+            $id = $stmt->fetchColumn();
+            return $id ? (int)$id : null;
+        } catch (Throwable $e) {
+            try {
+                $stmtFallback = $db->query("
+                    SELECT id FROM salas 
+                    WHERE LOWER(nombre) LIKE '%depósito%' 
+                       OR LOWER(nombre) LIKE '%deposito%' 
+                       OR capacidad_puestos = 0
+                    ORDER BY id ASC 
+                    LIMIT 1
+                ");
+                $id = $stmtFallback->fetchColumn();
+                return $id ? (int)$id : null;
+            } catch (Throwable $inner) {
+                return null;
+            }
+        }
+    }
+
     public static function create(array $data): int {
         $db = Database::getConnection();
 
@@ -144,6 +177,13 @@ class Equipo {
 
         $codigo = trim($data['codigo_patrimonial']);
         $serial = trim($data['numero_serie']);
+        $estado = strtoupper(trim($data['estado']));
+        if (in_array($estado, ['PRESTAMO', 'EN_PRESTAMO'], true)) {
+            $estado = 'OPERATIVO';
+        }
+        if (!in_array($estado, ['OPERATIVO', 'DE_BAJA'], true)) {
+            throw new InvalidArgumentException("El estado '{$estado}' no es válido. Estados permitidos: OPERATIVO, DE_BAJA.", 400);
+        }
 
         $stmt = $db->prepare("SELECT id FROM equipos WHERE codigo_patrimonial = :codigo LIMIT 1");
         $stmt->execute([':codigo' => $codigo]);
@@ -157,10 +197,13 @@ class Equipo {
             throw new RuntimeException("El número de serie '{$serial}' ya está registrado.", 409);
         }
 
-                $puesto_id = null;
-        if (!empty($data['puesto_id']) && (int)$data['puesto_id'] > 0) {
+        $sala_id = (int)$data['sala_id'];
+        $puesto_id = null;
+
+        if ($estado === 'DE_BAJA') {
+            $puesto_id = null;
+        } elseif (!empty($data['puesto_id']) && (int)$data['puesto_id'] > 0) {
             $puesto_id = (int)$data['puesto_id'];
-            $sala_id = (int)$data['sala_id'];
 
             // Validar que el puesto pertenezca a la sala seleccionada
             $stmtPuesto = $db->prepare("SELECT sala_id FROM puestos WHERE id = :puesto_id LIMIT 1");
@@ -174,6 +217,12 @@ class Equipo {
             $chk->execute([':puesto_id' => $puesto_id]);
             if ($chk->fetch()) {
                 throw new RuntimeException("El puesto seleccionado ya está asignado a otro equipo.", 409);
+            }
+        } else {
+            // Equipo OPERATIVO sin puesto asignado -> vincular a la sala de Depósito/Almacén
+            $depositoId = self::getDepositoSalaId($db);
+            if ($depositoId !== null) {
+                $sala_id = $depositoId;
             }
         }
 
@@ -220,8 +269,8 @@ class Equipo {
             ':categoria'          => trim($data['categoria']),
             ':marca'              => trim($data['marca']),
             ':modelo'             => trim($data['modelo']),
-            ':estado'             => trim($data['estado']),
-            ':sala_id'            => (int)$data['sala_id'],
+            ':estado'             => $estado,
+            ':sala_id'            => $sala_id,
             ':puesto_id'          => $puesto_id,
             ':cpu'                => !empty($data['cpu']) ? trim($data['cpu']) : null,
             ':ram_gb'             => (!empty($data['ram_gb']) && (int)$data['ram_gb'] > 0) ? (int)$data['ram_gb'] : null,
@@ -251,6 +300,13 @@ class Equipo {
 
         $codigo = trim($data['codigo_patrimonial']);
         $serial = trim($data['numero_serie']);
+        $estado = strtoupper(trim($data['estado']));
+        if (in_array($estado, ['PRESTAMO', 'EN_PRESTAMO'], true)) {
+            $estado = 'OPERATIVO';
+        }
+        if (!in_array($estado, ['OPERATIVO', 'DE_BAJA'], true)) {
+            throw new InvalidArgumentException("El estado '{$estado}' no es válido. Estados permitidos: OPERATIVO, DE_BAJA.", 400);
+        }
 
         // 2. Verificar duplicados excluyendo el ID actual
         $stmtCod = $db->prepare("SELECT id FROM equipos WHERE codigo_patrimonial = :codigo AND id != :id LIMIT 1");
@@ -265,11 +321,14 @@ class Equipo {
             throw new RuntimeException("El número de serie '{$serial}' ya está asignado a otro equipo.", 409);
         }
 
-        // 3. Validar puesto
+        // 3. Validar puesto y sincronizar sala de depósito si corresponde
+        $sala_id = (int)$data['sala_id'];
         $puesto_id = null;
-        if (!empty($data['puesto_id']) && (int)$data['puesto_id'] > 0) {
+
+        if ($estado === 'DE_BAJA') {
+            $puesto_id = null;
+        } elseif (!empty($data['puesto_id']) && (int)$data['puesto_id'] > 0) {
             $puesto_id = (int)$data['puesto_id'];
-            $sala_id = (int)$data['sala_id'];
 
             // Validar que el puesto pertenezca a la sala seleccionada
             $stmtPuesto = $db->prepare("SELECT sala_id FROM puestos WHERE id = :puesto_id LIMIT 1");
@@ -283,6 +342,12 @@ class Equipo {
             $chk->execute([':puesto_id' => $puesto_id, ':id' => $id]);
             if ($chk->fetch()) {
                 throw new RuntimeException("El puesto seleccionado ya está ocupado por otro activo.", 409);
+            }
+        } else {
+            // Equipo OPERATIVO sin puesto asignado -> vincular a la sala de Depósito/Almacén
+            $depositoId = self::getDepositoSalaId($db);
+            if ($depositoId !== null) {
+                $sala_id = $depositoId;
             }
         }
 
@@ -315,8 +380,8 @@ class Equipo {
             ':categoria'          => trim($data['categoria']),
             ':marca'              => trim($data['marca']),
             ':modelo'             => trim($data['modelo']),
-            ':estado'             => trim($data['estado']),
-            ':sala_id'            => (int)$data['sala_id'],
+            ':estado'             => $estado,
+            ':sala_id'            => $sala_id,
             ':puesto_id'          => $puesto_id,
             ':cpu'                => !empty($data['cpu']) ? trim($data['cpu']) : null,
             ':ram_gb'             => (!empty($data['ram_gb']) && (int)$data['ram_gb'] > 0) ? (int)$data['ram_gb'] : null,
@@ -334,65 +399,143 @@ class Equipo {
     public static function getDashboardMetrics(): array {
         $db = Database::getConnection();
 
-        // 1. Conteo general y por estados patrimoniales
-        $sqlCounts = "
-            SELECT 
-                COUNT(*) AS total_equipos,
-                SUM(CASE WHEN estado = 'OPERATIVO' THEN 1 ELSE 0 END) AS operativos,
-                SUM(CASE WHEN estado = 'EN_PRESTAMO' THEN 1 ELSE 0 END) AS en_prestamo,
-                SUM(CASE WHEN estado = 'DE_BAJA' THEN 1 ELSE 0 END) AS de_baja,
-                SUM(CASE WHEN puesto_id IS NOT NULL THEN 1 ELSE 0 END) AS puestos_ocupados,
-                SUM(CASE WHEN puesto_id IS NULL THEN 1 ELSE 0 END) AS equipos_deposito
-            FROM equipos
-        ";
-        $stmtCounts = $db->query($sqlCounts);
-        $counts = $stmtCounts->fetch();
+        $depositoSalaId = self::getDepositoSalaId($db);
+
+        // 1. Conteo general y por estados patrimoniales ('OPERATIVO', 'DE_BAJA')
+        // Garantiza la identidad: puestos_ocupados + equipos_deposito + de_baja = total_equipos
+        try {
+            $sqlCounts = "
+                SELECT 
+                    COUNT(*) AS total_equipos,
+                    SUM(CASE WHEN e.estado = 'OPERATIVO' THEN 1 ELSE 0 END) AS operativos,
+                    SUM(CASE WHEN e.estado = 'DE_BAJA' THEN 1 ELSE 0 END) AS de_baja,
+                    SUM(CASE 
+                        WHEN e.estado = 'OPERATIVO' 
+                         AND e.puesto_id IS NOT NULL 
+                         AND COALESCE(s.tipo, 'LABORATORIO') != 'ALMACEN' 
+                        THEN 1 ELSE 0 
+                    END) AS puestos_ocupados,
+                    SUM(CASE 
+                        WHEN e.estado = 'OPERATIVO' 
+                         AND (COALESCE(s.tipo, 'LABORATORIO') = 'ALMACEN' OR e.puesto_id IS NULL) 
+                        THEN 1 ELSE 0 
+                    END) AS equipos_deposito
+                FROM equipos e
+                LEFT JOIN salas s ON e.sala_id = s.id
+            ";
+            $stmtCounts = $db->query($sqlCounts);
+            $counts = $stmtCounts->fetch();
+        } catch (Throwable $e) {
+            $sqlCountsFallback = "
+                SELECT 
+                    COUNT(*) AS total_equipos,
+                    SUM(CASE WHEN e.estado = 'OPERATIVO' THEN 1 ELSE 0 END) AS operativos,
+                    SUM(CASE WHEN e.estado = 'DE_BAJA' THEN 1 ELSE 0 END) AS de_baja,
+                    SUM(CASE WHEN e.estado = 'OPERATIVO' AND e.puesto_id IS NOT NULL THEN 1 ELSE 0 END) AS puestos_ocupados,
+                    SUM(CASE WHEN e.estado = 'OPERATIVO' AND e.puesto_id IS NULL THEN 1 ELSE 0 END) AS equipos_deposito
+                FROM equipos e
+            ";
+            $counts = $db->query($sqlCountsFallback)->fetch();
+        }
 
         $total = (int)($counts['total_equipos'] ?? 0);
         $operativos = (int)($counts['operativos'] ?? 0);
-        $enPrestamo = (int)($counts['en_prestamo'] ?? 0);
         $deBaja = (int)($counts['de_baja'] ?? 0);
         $puestosOcupados = (int)($counts['puestos_ocupados'] ?? 0);
         $equiposDeposito = (int)($counts['equipos_deposito'] ?? 0);
 
-        $tasaOperatividad = $total > 0 ? round(($operativos / $total) * 100, 1) : 0;
+        // Disponibilidad en Depósito / Reserva = (Equipos Operativos en Depósito / Total Equipos Operativos) * 100
+        $tasaDisponibilidad = $operativos > 0 ? round(($equiposDeposito / $operativos) * 100, 1) : 0;
 
-        // 2. Capacidad total de puestos en todas las salas
-        $stmtCapacidad = $db->query("SELECT COALESCE(SUM(capacidad_puestos), 0) FROM salas");
-        $totalCapacidadPuestos = (int)$stmtCapacidad->fetchColumn();
+        // 2. Capacidad total de puestos en salas de laboratorio (excluyendo almacén)
+        try {
+            $stmtCapacidad = $db->query("
+                SELECT COALESCE(SUM(capacidad_puestos), 0) 
+                FROM salas 
+                WHERE COALESCE(tipo, 'LABORATORIO') != 'ALMACEN'
+            ");
+            $totalCapacidadPuestos = (int)$stmtCapacidad->fetchColumn();
+        } catch (Throwable $e) {
+            $stmtCapacidad = $db->query("SELECT COALESCE(SUM(capacidad_puestos), 0) FROM salas");
+            $totalCapacidadPuestos = (int)$stmtCapacidad->fetchColumn();
+        }
 
-        // 3. Ocupación física real por sala
-        $sqlSalas = "
-            SELECT 
-                s.id AS sala_id,
-                s.nombre AS sala_nombre,
-                s.capacidad_puestos,
-                COUNT(e.id) AS total_equipos,
-                SUM(CASE WHEN e.puesto_id IS NOT NULL THEN 1 ELSE 0 END) AS puestos_ocupados,
-                SUM(CASE WHEN e.estado = 'OPERATIVO' THEN 1 ELSE 0 END) AS operativos
-            FROM salas s
-            LEFT JOIN equipos e ON s.id = e.sala_id
-            GROUP BY s.id, s.nombre, s.capacidad_puestos
-            ORDER BY s.nombre ASC
-        ";
-        $stmtSalas = $db->query($sqlSalas);
-        $rawSalas = $stmtSalas->fetchAll();
+        // 3. Ocupación física real por sala (unificando la sala de depósito/almacén con el KPI superior)
+        try {
+            $sqlSalas = "
+                SELECT 
+                    s.id AS sala_id,
+                    s.nombre AS sala_nombre,
+                    COALESCE(s.tipo, 'LABORATORIO') AS tipo,
+                    s.capacidad_puestos,
+                    (SELECT COUNT(*) FROM puestos p WHERE p.sala_id = s.id) AS puestos_reales,
+                    COUNT(e.id) AS total_equipos,
+                    SUM(CASE WHEN e.estado = 'OPERATIVO' AND e.puesto_id IS NOT NULL THEN 1 ELSE 0 END) AS puestos_ocupados,
+                    SUM(CASE WHEN e.estado = 'OPERATIVO' THEN 1 ELSE 0 END) AS operativos
+                FROM salas s
+                LEFT JOIN equipos e ON s.id = e.sala_id
+                GROUP BY s.id, s.nombre, s.tipo, s.capacidad_puestos
+                ORDER BY (COALESCE(s.tipo, 'LABORATORIO') = 'ALMACEN') ASC, s.nombre ASC
+            ";
+            $stmtSalas = $db->query($sqlSalas);
+            $rawSalas = $stmtSalas->fetchAll();
+        } catch (Throwable $e) {
+            $sqlSalasFallback = "
+                SELECT 
+                    s.id AS sala_id,
+                    s.nombre AS sala_nombre,
+                    'LABORATORIO' AS tipo,
+                    s.capacidad_puestos,
+                    (SELECT COUNT(*) FROM puestos p WHERE p.sala_id = s.id) AS puestos_reales,
+                    COUNT(e.id) AS total_equipos,
+                    SUM(CASE WHEN e.estado = 'OPERATIVO' AND e.puesto_id IS NOT NULL THEN 1 ELSE 0 END) AS puestos_ocupados,
+                    SUM(CASE WHEN e.estado = 'OPERATIVO' THEN 1 ELSE 0 END) AS operativos
+                FROM salas s
+                LEFT JOIN equipos e ON s.id = e.sala_id
+                GROUP BY s.id, s.nombre, s.capacidad_puestos
+                ORDER BY s.nombre ASC
+            ";
+            $rawSalas = $db->query($sqlSalasFallback)->fetchAll();
+        }
 
-        $equiposPorSala = array_map(function($s) {
-            $capacidad = (int)$s['capacidad_puestos'];
+        $equiposPorSala = array_map(function($s) use ($equiposDeposito, $depositoSalaId) {
+            $salaId = (int)$s['sala_id'];
+            $esDeposito = ($s['tipo'] === 'ALMACEN') 
+                || ($depositoSalaId !== null && $salaId === $depositoSalaId)
+                || stripos($s['sala_nombre'], 'depósito') !== false 
+                || stripos($s['sala_nombre'], 'deposito') !== false;
+
+            if ($esDeposito) {
+                return [
+                    'sala_id'              => $salaId,
+                    'sala_nombre'          => $s['sala_nombre'],
+                    'tipo'                 => 'ALMACEN',
+                    'es_deposito'          => true,
+                    'capacidad_puestos'    => 0,
+                    'total_equipos'        => $equiposDeposito,
+                    'puestos_ocupados'     => 0,
+                    'puestos_libres'       => 0,
+                    'porcentaje_ocupacion' => 0,
+                    'operativos'           => $equiposDeposito
+                ];
+            }
+
+            $capacidad = (int)$s['capacidad_puestos'] > 0 ? (int)$s['capacidad_puestos'] : (int)$s['puestos_reales'];
             $ocupados = (int)$s['puestos_ocupados'];
             $libres = max(0, $capacidad - $ocupados);
             $porcentajeOcupacion = $capacidad > 0 ? round(($ocupados / $capacidad) * 100) : 0;
 
             return [
-                'sala_id'              => (int)$s['sala_id'],
+                'sala_id'              => $salaId,
                 'sala_nombre'          => $s['sala_nombre'],
+                'tipo'                 => 'LABORATORIO',
+                'es_deposito'          => false,
                 'capacidad_puestos'    => $capacidad,
-                'total_equipos'        => (int)$s['total_equipos'],
+                'total_equipos'        => $ocupados,
                 'puestos_ocupados'     => $ocupados,
                 'puestos_libres'       => $libres,
                 'porcentaje_ocupacion' => $porcentajeOcupacion,
-                'operativos'           => (int)$s['operativos']
+                'operativos'           => $ocupados
             ];
         }, $rawSalas);
 
@@ -406,45 +549,47 @@ class Equipo {
         $stmtCategorias = $db->query($sqlCategorias);
         $distribucionCategorias = $stmtCategorias->fetchAll();
 
-        // 5. Últimos Movimientos Patrimoniales
+        // 5. Actividad Patrimonial Reciente (Altas, Bajas y Reubicaciones Físicas)
         $sqlMovimientos = "
-            (
-                SELECT 
-                    'PRESTAMO' AS tipo_evento,
-                    p.fecha_prestamo AS fecha,
-                    e.codigo_patrimonial,
-                    CONCAT(e.marca, ' ', e.modelo) AS modelo,
-                    CONCAT('Préstamo asignado a ', p.solicitante_nombre, ' (', p.destino_uso, ')') AS descripcion,
-                    'MEDIA' AS prioridad,
-                    p.estado_prestamo AS estado
-                FROM prestamos p
-                JOIN equipos e ON p.equipo_id = e.id
-            )
-            UNION ALL
-            (
-                SELECT 
-                    'DEVOLUCION' AS tipo_evento,
-                    p.fecha_devolucion_real AS fecha,
-                    e.codigo_patrimonial,
-                    CONCAT(e.marca, ' ', e.modelo) AS modelo,
-                    CONCAT('Devolución de préstamo por ', p.solicitante_nombre) AS descripcion,
-                    'BAJA' AS prioridad,
-                    'DEVUELTO' AS estado
-                FROM prestamos p
-                JOIN equipos e ON p.equipo_id = e.id
-                WHERE p.fecha_devolucion_real IS NOT NULL
-            )
-            UNION ALL
             (
                 SELECT 
                     'ALTA_EQUIPO' AS tipo_evento,
                     e.created_at AS fecha,
                     e.codigo_patrimonial,
                     CONCAT(e.marca, ' ', e.modelo) AS modelo,
-                    CONCAT('Alta de nuevo activo patrimonial (', REPLACE(e.categoria, '_', ' '), ')') AS descripcion,
+                    CONCAT('Alta de activo patrimonial (', REPLACE(e.categoria, '_', ' '), ') en ', COALESCE(s.nombre, 'Laboratorio')) AS descripcion,
                     'BAJA' AS prioridad,
                     e.estado AS estado
                 FROM equipos e
+                LEFT JOIN salas s ON e.sala_id = s.id
+            )
+            UNION ALL
+            (
+                SELECT 
+                    'REUBICACION' AS tipo_evento,
+                    e.created_at AS fecha,
+                    e.codigo_patrimonial,
+                    CONCAT(e.marca, ' ', e.modelo) AS modelo,
+                    CONCAT('Ubicado físicamente en puesto ', p.codigo_puesto, ' (', COALESCE(s.nombre, 'Sala'), ')') AS descripcion,
+                    'BAJA' AS prioridad,
+                    e.estado AS estado
+                FROM equipos e
+                JOIN puestos p ON e.puesto_id = p.id
+                LEFT JOIN salas s ON e.sala_id = s.id
+            )
+            UNION ALL
+            (
+                SELECT 
+                    'BAJA_EQUIPO' AS tipo_evento,
+                    e.created_at AS fecha,
+                    e.codigo_patrimonial,
+                    CONCAT(e.marca, ' ', e.modelo) AS modelo,
+                    CONCAT('Baja patrimonial registrada en ', COALESCE(s.nombre, 'Laboratorio')) AS descripcion,
+                    'ALTA' AS prioridad,
+                    'DE_BAJA' AS estado
+                FROM equipos e
+                LEFT JOIN salas s ON e.sala_id = s.id
+                WHERE e.estado = 'DE_BAJA'
             )
             ORDER BY fecha DESC
             LIMIT 6
@@ -455,9 +600,10 @@ class Equipo {
         return [
             'total_equipos'           => $total,
             'operativos'              => $operativos,
-            'en_prestamo'             => $enPrestamo,
             'de_baja'                 => $deBaja,
-            'tasa_operatividad'       => $tasaOperatividad,
+            'disponibles_reserva'     => $equiposDeposito,
+            'tasa_disponibilidad'     => $tasaDisponibilidad,
+            'tasa_operatividad'       => $tasaDisponibilidad,
             'puestos_ocupados'        => $puestosOcupados,
             'total_capacidad_puestos' => $totalCapacidadPuestos,
             'equipos_deposito'        => $equiposDeposito,
@@ -512,37 +658,7 @@ class Equipo {
             return null;
         }
 
-        // 2. Historial de Préstamos
-        $sqlPrestamos = "
-            SELECT 
-                id,
-                equipo_id,
-                solicitante_nombre,
-                solicitante_identificacion,
-                destino_uso,
-                fecha_prestamo,
-                fecha_devolucion_estimada,
-                fecha_devolucion_real,
-                estado_prestamo,
-                observaciones
-            FROM prestamos
-            WHERE equipo_id = :equipo_id
-            ORDER BY fecha_prestamo DESC, id DESC
-        ";
-        $stmtPrest = $db->prepare($sqlPrestamos);
-        $stmtPrest->execute([':equipo_id' => $id]);
-        $prestamos = $stmtPrest->fetchAll();
-
-        // 3. Préstamo Activo actual (si existe)
-        $prestamoActivo = null;
-        foreach ($prestamos as $pr) {
-            if ($pr['estado_prestamo'] === 'ACTIVO') {
-                $prestamoActivo = $pr;
-                break;
-            }
-        }
-
-        // 4. Construcción de Línea de Tiempo Patrimonial Unificada
+        // 2. Construcción de Línea de Tiempo Patrimonial Unificada
         $timeline = [];
 
         // Hito: Alta e Incorporación
@@ -555,7 +671,7 @@ class Equipo {
             'titulo'      => 'Alta e Incorporación al Inventario',
             'fecha'       => $fechaAlta,
             'ubicacion'   => $ubicacionTexto,
-            'descripcion' => "Incorporación formal del activo al inventario. Ubicación inicial: {$ubicacionTexto}.",
+            'descripcion' => "Incorporación formal del activo al inventario. Ubicación: {$ubicacionTexto}.",
             'estado'      => $equipo['estado'],
             'badge_tipo'  => 'success',
             'icono'       => 'fa-box-archive'
@@ -576,32 +692,18 @@ class Equipo {
             ];
         }
 
-        // Hitos: Préstamos
-        foreach ($prestamos as $p) {
-            $esActivo = ($p['estado_prestamo'] === 'ACTIVO');
-            $descPrestamo = "Asignado a: {$p['solicitante_nombre']} (ID: {$p['solicitante_identificacion']}) para destino: {$p['destino_uso']}.";
-            if (!empty($p['observaciones'])) {
-                $descPrestamo .= " Obs: {$p['observaciones']}";
-            }
-            if (!$esActivo && !empty($p['fecha_devolucion_real'])) {
-                $descPrestamo .= " [Devuelto el {$p['fecha_devolucion_real']}]";
-            }
-
+        // Hito: Baja Patrimonial (si el equipo está DE_BAJA)
+        if ($equipo['estado'] === 'DE_BAJA') {
             $timeline[] = [
-                'tipo'                      => 'PRESTAMO',
-                'id'                        => (int)$p['id'],
-                'categoria'                 => 'PRESTAMO',
-                'titulo'                    => ($esActivo ? 'Préstamo Activo: ' : 'Préstamo Concluido: ') . $p['solicitante_nombre'],
-                'fecha'                     => $p['fecha_prestamo'],
-                'fecha_devolucion_estimada' => $p['fecha_devolucion_estimada'],
-                'fecha_devolucion_real'     => $p['fecha_devolucion_real'],
-                'solicitante_nombre'        => $p['solicitante_nombre'],
-                'solicitante_identificacion'=> $p['solicitante_identificacion'],
-                'destino_uso'               => $p['destino_uso'],
-                'descripcion'               => $descPrestamo,
-                'estado'                    => $p['estado_prestamo'],
-                'badge_tipo'                => $esActivo ? 'primary' : 'outline',
-                'icono'                     => $esActivo ? 'fa-handshake-angle' : 'fa-handshake'
+                'tipo'        => 'BAJA',
+                'categoria'   => 'DESINCORPORACION',
+                'titulo'      => 'Baja Patrimonial del Activo',
+                'fecha'       => $fechaAlta,
+                'ubicacion'   => $equipo['sala_nombre'] ?? 'Depósito',
+                'descripcion' => !empty($equipo['notas']) ? $equipo['notas'] : 'Activo desincorporado del inventario operativo.',
+                'estado'      => 'DE_BAJA',
+                'badge_tipo'  => 'destructive',
+                'icono'       => 'fa-ban'
             ];
         }
 
@@ -612,162 +714,9 @@ class Equipo {
 
         return [
             'equipo'                   => $equipo,
-            'prestamo_activo'          => $prestamoActivo,
             'historial_mantenimientos' => [],
-            'historial_prestamos'      => $prestamos,
             'timeline'                 => $timeline
         ];
-    }
-
-    /**
-     * Registra un nuevo préstamo y pasa el equipo a 'EN_PRESTAMO'.
-     */
-    public static function registrarPrestamo(array $data): int {
-        $db = Database::getConnection();
-
-        $equipoId = (int)($data['equipo_id'] ?? 0);
-        if ($equipoId <= 0) {
-            throw new InvalidArgumentException("ID de equipo inválido.", 400);
-        }
-
-        $nombre = trim((string)($data['solicitante_nombre'] ?? ''));
-        $identificacion = trim((string)($data['solicitante_identificacion'] ?? ''));
-        $destino = trim((string)($data['destino_uso'] ?? ''));
-        $fechaEstimada = !empty($data['fecha_devolucion_estimada']) ? trim((string)$data['fecha_devolucion_estimada']) : null;
-        $observaciones = !empty($data['observaciones']) ? trim((string)$data['observaciones']) : null;
-
-        if ($nombre === '') {
-            throw new InvalidArgumentException("El nombre del solicitante / docente es obligatorio.", 400);
-        }
-        if ($identificacion === '') {
-            throw new InvalidArgumentException("La cédula o ID institucional del solicitante es obligatoria.", 400);
-        }
-        if ($destino === '') {
-            throw new InvalidArgumentException("El aula o destino de uso es obligatorio.", 400);
-        }
-
-        $db->beginTransaction();
-        try {
-            $stmtEquipo = $db->prepare("SELECT id, estado FROM equipos WHERE id = :id FOR UPDATE");
-            $stmtEquipo->execute([':id' => $equipoId]);
-            $equipo = $stmtEquipo->fetch();
-
-            if (!$equipo) {
-                throw new RuntimeException("El equipo #{$equipoId} no existe.", 404);
-            }
-            if ($equipo['estado'] === 'EN_PRESTAMO') {
-                throw new RuntimeException("El equipo ya se encuentra actualmente asignado en préstamo activo.", 409);
-            }
-            if ($equipo['estado'] === 'DE_BAJA') {
-                throw new RuntimeException("No se puede prestar un equipo que ha sido dado de baja patrimonial.", 409);
-            }
-
-            // Validar que no haya préstamo activo huérfano
-            $chkLoan = $db->prepare("SELECT id FROM prestamos WHERE equipo_id = :equipo_id AND estado_prestamo = 'ACTIVO' LIMIT 1");
-            $chkLoan->execute([':equipo_id' => $equipoId]);
-            if ($chkLoan->fetch()) {
-                throw new RuntimeException("El equipo ya tiene un registro de préstamo activo pendiente de devolución.", 409);
-            }
-
-            // Insertar préstamo
-            $sqlInsert = "
-                INSERT INTO prestamos (
-                    equipo_id,
-                    solicitante_nombre,
-                    solicitante_identificacion,
-                    destino_uso,
-                    fecha_devolucion_estimada,
-                    observaciones,
-                    estado_prestamo,
-                    fecha_prestamo
-                ) VALUES (
-                    :equipo_id,
-                    :solicitante_nombre,
-                    :solicitante_identificacion,
-                    :destino_uso,
-                    :fecha_devolucion_estimada,
-                    :observaciones,
-                    'ACTIVO',
-                    NOW()
-                )
-            ";
-            $stmtInsert = $db->prepare($sqlInsert);
-            $stmtInsert->execute([
-                ':equipo_id'                 => $equipoId,
-                ':solicitante_nombre'        => $nombre,
-                ':solicitante_identificacion'=> $identificacion,
-                ':destino_uso'               => $destino,
-                ':fecha_devolucion_estimada' => $fechaEstimada,
-                ':observaciones'             => $observaciones
-            ]);
-            $prestamoId = (int)$db->lastInsertId();
-
-            // Actualizar estado del equipo a EN_PRESTAMO
-            $stmtUpd = $db->prepare("UPDATE equipos SET estado = 'EN_PRESTAMO' WHERE id = :id");
-            $stmtUpd->execute([':id' => $equipoId]);
-
-            $db->commit();
-            return $prestamoId;
-        } catch (Throwable $e) {
-            if ($db->inTransaction()) {
-                $db->rollBack();
-            }
-            throw $e;
-        }
-    }
-
-    /**
-     * Marca un préstamo como DEVUELTO y restaura el estado del equipo a 'OPERATIVO'.
-     */
-    public static function devolverPrestamo(int $equipoId = 0, int $prestamoId = 0): bool {
-        $db = Database::getConnection();
-
-        if ($equipoId <= 0 && $prestamoId <= 0) {
-            throw new InvalidArgumentException("Debe especificar equipo_id o prestamo_id para procesar la devolución.", 400);
-        }
-
-        $db->beginTransaction();
-        try {
-            if ($prestamoId > 0) {
-                $stmt = $db->prepare("SELECT id, equipo_id, estado_prestamo FROM prestamos WHERE id = :id FOR UPDATE");
-                $stmt->execute([':id' => $prestamoId]);
-                $prestamo = $stmt->fetch();
-                if (!$prestamo) {
-                    throw new RuntimeException("El préstamo #{$prestamoId} no existe.", 404);
-                }
-                $targetEquipoId = (int)$prestamo['equipo_id'];
-                $targetPrestamoId = (int)$prestamo['id'];
-            } else {
-                $stmt = $db->prepare("SELECT id, equipo_id, estado_prestamo FROM prestamos WHERE equipo_id = :equipo_id AND estado_prestamo = 'ACTIVO' ORDER BY id DESC LIMIT 1 FOR UPDATE");
-                $stmt->execute([':equipo_id' => $equipoId]);
-                $prestamo = $stmt->fetch();
-                if (!$prestamo) {
-                    // Si el equipo estaba marcado EN_PRESTAMO pero no hay registro activo, restauramos su estado
-                    $stmtRestore = $db->prepare("UPDATE equipos SET estado = 'OPERATIVO' WHERE id = :id");
-                    $stmtRestore->execute([':id' => $equipoId]);
-                    $db->commit();
-                    return true;
-                }
-                $targetEquipoId = (int)$prestamo['equipo_id'];
-                $targetPrestamoId = (int)$prestamo['id'];
-            }
-
-            // Marcar préstamo como DEVUELTO
-            $stmtClose = $db->prepare("UPDATE prestamos SET estado_prestamo = 'DEVUELTO', fecha_devolucion_real = NOW() WHERE id = :id");
-            $stmtClose->execute([':id' => $targetPrestamoId]);
-
-            // Restaurar equipo a OPERATIVO
-            $stmtRestore = $db->prepare("UPDATE equipos SET estado = 'OPERATIVO' WHERE id = :id");
-            $stmtRestore->execute([':id' => $targetEquipoId]);
-
-            $db->commit();
-            return true;
-        } catch (Throwable $e) {
-            if ($db->inTransaction()) {
-                $db->rollBack();
-            }
-            throw $e;
-        }
     }
 
     /**
@@ -788,19 +737,9 @@ class Equipo {
             $notaBaja = trim("BAJA PATRIMONIAL: " . $motivo . " [" . date('Y-m-d H:i') . "]");
             $nuevasNotas = !empty($equipo['notas']) ? ($equipo['notas'] . "\n" . $notaBaja) : $notaBaja;
 
-            // 1. Actualizar estado del equipo a DE_BAJA y liberar puesto
+            // Actualizar estado del equipo a DE_BAJA y liberar puesto
             $update = $db->prepare("UPDATE equipos SET estado = 'DE_BAJA', puesto_id = NULL, notas = :notas WHERE id = :id");
             $update->execute([':notas' => $nuevasNotas, ':id' => $id]);
-
-            // 2. Si tiene préstamos activos, marcarlos automáticamente como DEVUELTO con fecha_devolucion_real = NOW()
-            $stmtPrestamos = $db->prepare("
-                UPDATE prestamos 
-                SET estado_prestamo = 'DEVUELTO', 
-                    fecha_devolucion_real = NOW(),
-                    observaciones = CONCAT(COALESCE(observaciones, ''), '\n[Devolución automática por baja patrimonial]')
-                WHERE equipo_id = :equipo_id AND estado_prestamo = 'ACTIVO'
-            ");
-            $stmtPrestamos->execute([':equipo_id' => $id]);
 
             $db->commit();
             return true;

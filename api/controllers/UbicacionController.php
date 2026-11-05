@@ -107,18 +107,100 @@ class UbicacionController {
             }
 
             $nombre = trim($data['nombre']);
-            $descripcion = !empty($data['descripcion']) ? trim($data['descripcion']) : null;
+            $descripcion = isset($data['descripcion']) && trim((string)$data['descripcion']) !== '' ? trim((string)$data['descripcion']) : null;
+            $edificio = isset($data['edificio']) && trim((string)$data['edificio']) !== '' ? trim((string)$data['edificio']) : null;
+            $piso = isset($data['piso']) && trim((string)$data['piso']) !== '' ? trim((string)$data['piso']) : null;
             $capacidad = isset($data['capacidad_puestos']) ? (int)$data['capacidad_puestos'] : 0;
+            $tipo = isset($data['tipo']) ? (string)$data['tipo'] : 'LABORATORIO';
 
-            $id = Ubicacion::crearSala($nombre, $descripcion, $capacidad);
+            $id = Ubicacion::crearSala($nombre, $descripcion, $capacidad, $edificio, $piso, $tipo);
 
             Database::sendJson([
                 'success' => true,
                 'message' => 'Sala creada exitosamente.',
                 'id'      => $id
             ], 201);
+        } catch (InvalidArgumentException $e) {
+            Database::sendJson(['success' => false, 'message' => $e->getMessage()], 400);
+        } catch (RuntimeException $e) {
+            $code = $e->getCode() === 409 ? 409 : ($e->getCode() === 404 ? 404 : 400);
+            Database::sendJson(['success' => false, 'message' => $e->getMessage()], $code);
         } catch (Throwable $e) {
             Database::sendJson(['success' => false, 'message' => 'Error al crear sala: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public static function actualizarSala(): void {
+        try {
+            $input = file_get_contents('php://input');
+            $data = json_decode($input, true);
+            if (!is_array($data)) {
+                $data = [];
+            }
+
+            $idSala = (int)($data['id_sala'] ?? $data['sala_id'] ?? $data['id'] ?? $_GET['id_sala'] ?? $_GET['id'] ?? 0);
+            $nombre = trim((string)($data['nombre'] ?? ''));
+
+            if ($idSala <= 0) {
+                Database::sendJson(['success' => false, 'message' => 'El parámetro id_sala es obligatorio.'], 400);
+                return;
+            }
+
+            if ($nombre === '') {
+                Database::sendJson(['success' => false, 'message' => 'El nombre de la sala es obligatorio.'], 400);
+                return;
+            }
+
+            $edificio = array_key_exists('edificio', $data) ? (string)$data['edificio'] : null;
+            $piso = array_key_exists('piso', $data) ? (string)$data['piso'] : null;
+            $descripcion = array_key_exists('descripcion', $data) ? (string)$data['descripcion'] : null;
+            $capacidad = isset($data['capacidad_puestos']) && $data['capacidad_puestos'] !== '' ? (int)$data['capacidad_puestos'] : null;
+
+            $salaActualizada = Ubicacion::actualizarSala($idSala, $nombre, $edificio, $piso, $descripcion, $capacidad);
+
+            Database::sendJson([
+                'success' => true,
+                'message' => 'Sala actualizada exitosamente.',
+                'data'    => $salaActualizada
+            ], 200);
+        } catch (InvalidArgumentException $e) {
+            Database::sendJson(['success' => false, 'message' => $e->getMessage()], 400);
+        } catch (RuntimeException $e) {
+            $code = $e->getCode() === 409 ? 409 : ($e->getCode() === 404 ? 404 : 400);
+            Database::sendJson(['success' => false, 'message' => $e->getMessage()], $code);
+        } catch (Throwable $e) {
+            Database::sendJson(['success' => false, 'message' => 'Error al actualizar sala: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public static function eliminarSala(): void {
+        try {
+            $input = file_get_contents('php://input');
+            $data = json_decode($input, true);
+            if (!is_array($data)) {
+                $data = [];
+            }
+
+            $idSala = (int)($data['id_sala'] ?? $data['sala_id'] ?? $data['id'] ?? $_GET['id_sala'] ?? $_GET['id'] ?? 0);
+
+            if ($idSala <= 0) {
+                Database::sendJson(['success' => false, 'message' => 'El parámetro id_sala es obligatorio.'], 400);
+                return;
+            }
+
+            Ubicacion::eliminarSala($idSala);
+
+            Database::sendJson([
+                'success' => true,
+                'message' => 'Sala y puestos libres eliminados exitosamente.'
+            ], 200);
+        } catch (InvalidArgumentException $e) {
+            Database::sendJson(['success' => false, 'message' => $e->getMessage()], 400);
+        } catch (RuntimeException $e) {
+            $code = $e->getCode() === 409 ? 409 : ($e->getCode() === 404 ? 404 : 400);
+            Database::sendJson(['success' => false, 'message' => $e->getMessage()], $code);
+        } catch (Throwable $e) {
+            Database::sendJson(['success' => false, 'message' => 'Error al eliminar sala: ' . $e->getMessage()], 500);
         }
     }
 

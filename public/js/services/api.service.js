@@ -25,8 +25,13 @@ export const apiService = {
             method: 'GET',
             headers: { 'Accept': 'application/json' }
         });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return await response.json();
+        const json = await response.json().catch(() => null);
+        if (!response.ok) {
+            const err = new Error(json?.message || `Error HTTP ${response.status} al consultar el servidor.`);
+            err.status = response.status;
+            throw err;
+        }
+        return json;
     },
 
     async post(endpoint, data = {}) {
@@ -41,8 +46,12 @@ export const apiService = {
             headers: isFormData ? { 'Accept': 'application/json' } : { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: isFormData ? data : JSON.stringify(data)
         });
-        const json = await response.json();
-        if (!response.ok) throw new Error(json.message || `HTTP ${response.status}`);
+        const json = await response.json().catch(() => null);
+        if (!response.ok) {
+            const err = new Error(json?.message || `Error HTTP ${response.status}`);
+            err.status = response.status;
+            throw err;
+        }
         return json;
     }
 };
@@ -66,8 +75,13 @@ export async function obtenerEquipos(filtros = {}) {
             headers: { 'Accept': 'application/json' }
         });
 
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return await response.json();
+        const json = await response.json().catch(() => null);
+        if (!response.ok) {
+            const err = new Error(json?.message || `Error HTTP ${response.status} al obtener equipos.`);
+            err.status = response.status;
+            throw err;
+        }
+        return json;
     } catch (error) {
         console.error('Error al obtener equipos:', error);
         throw error;
@@ -145,8 +159,13 @@ export async function obtenerMetricasDashboard() {
             method: 'GET',
             headers: { 'Accept': 'application/json' }
         });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return await response.json();
+        const json = await response.json().catch(() => null);
+        if (!response.ok) {
+            const err = new Error(json?.message || `Error HTTP ${response.status} al obtener métricas del dashboard.`);
+            err.status = response.status;
+            throw err;
+        }
+        return json;
     } catch (error) {
         console.error('Error al obtener métricas del dashboard:', error);
         throw error;
@@ -159,8 +178,13 @@ export async function obtenerSalas() {
             method: 'GET',
             headers: { 'Accept': 'application/json' }
         });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return await response.json();
+        const json = await response.json().catch(() => null);
+        if (!response.ok) {
+            const err = new Error(json?.message || `Error HTTP ${response.status} al obtener salas.`);
+            err.status = response.status;
+            throw err;
+        }
+        return json;
     } catch (error) {
         console.error('Error al obtener salas:', error);
         throw error;
@@ -177,8 +201,13 @@ export async function obtenerPuestos(salaId, incluirPuestoId = null) {
             method: 'GET',
             headers: { 'Accept': 'application/json' }
         });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return await response.json();
+        const json = await response.json().catch(() => null);
+        if (!response.ok) {
+            const err = new Error(json?.message || `Error HTTP ${response.status} al obtener puestos.`);
+            err.status = response.status;
+            throw err;
+        }
+        return json;
     } catch (error) {
         console.error('Error al obtener puestos:', error);
         throw error;
@@ -201,8 +230,13 @@ export async function obtenerMapaUbicaciones() {
             method: 'GET',
             headers: { 'Accept': 'application/json' }
         });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return await response.json();
+        const json = await response.json().catch(() => null);
+        if (!response.ok) {
+            const err = new Error(json?.message || `Error HTTP ${response.status} al obtener mapa de ubicaciones.`);
+            err.status = response.status;
+            throw err;
+        }
+        return json;
     } catch (error) {
         console.error('Error al obtener mapa de ubicaciones:', error);
         throw error;
@@ -237,46 +271,6 @@ export async function obtenerHojaVidaEquipo(equipoId) {
 }
 
 /**
- * Registra un nuevo préstamo para un equipo y lo coloca en 'EN_PRESTAMO'
- */
-export async function registrarPrestamoEquipo(payload) {
-    try {
-        const response = await fetch('../api/routes/equipos.php?action=registrar-prestamo', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        const json = await response.json();
-        if (!response.ok) throw new Error(json.message || `HTTP ${response.status}`);
-        return json;
-    } catch (error) {
-        console.error('Error al registrar préstamo del equipo:', error);
-        throw error;
-    }
-}
-
-/**
- * Registra la devolución formal de un equipo y lo restaura a 'OPERATIVO'
- */
-export async function registrarDevolucionEquipo(equipoId) {
-    try {
-        const payload = typeof equipoId === 'object' ? equipoId : { equipo_id: equipoId };
-        const response = await fetch('../api/routes/equipos.php?action=devolver-prestamo', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        const json = await response.json();
-        if (!response.ok) throw new Error(json.message || `HTTP ${response.status}`);
-        return json;
-    } catch (error) {
-        console.error(`Error al registrar devolución del equipo:`, error);
-        throw error;
-    }
-}
-
-
-/**
  * Reubica un equipo a una nueva sala y puesto físico (o sin puesto fijo).
  */
 export async function reubicarEquipo(payload) {
@@ -306,10 +300,60 @@ export async function crearSala(data) {
             body: JSON.stringify(data)
         });
         const json = await response.json();
-        if (!response.ok) throw new Error(json.message || `HTTP ${response.status}`);
+        if (!response.ok) {
+            const err = new Error(json.message || `HTTP ${response.status}`);
+            err.status = response.status;
+            throw err;
+        }
         return json;
     } catch (error) {
         console.error('Error al crear sala:', error);
+        throw error;
+    }
+}
+
+/**
+ * Renombra o actualiza los datos de una sala / laboratorio (Rol ADMIN)
+ */
+export async function actualizarSala(data) {
+    try {
+        const response = await fetch('../api/routes/ubicaciones.php?action=actualizar-sala', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const json = await response.json();
+        if (!response.ok) {
+            const err = new Error(json.message || `HTTP ${response.status}`);
+            err.status = response.status;
+            throw err;
+        }
+        return json;
+    } catch (error) {
+        console.error('Error al actualizar sala:', error);
+        throw error;
+    }
+}
+
+/**
+ * Elimina una sala sin equipos asignados y sus puestos libres (Rol ADMIN)
+ */
+export async function eliminarSala(idSala) {
+    try {
+        const response = await fetch('../api/routes/ubicaciones.php?action=eliminar-sala', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ id_sala: parseInt(idSala, 10) })
+        });
+        const json = await response.json();
+        if (!response.ok) {
+            const err = new Error(json.message || `HTTP ${response.status}`);
+            err.status = response.status;
+            throw err;
+        }
+        return json;
+    } catch (error) {
+        console.error('Error al eliminar sala:', error);
         throw error;
     }
 }

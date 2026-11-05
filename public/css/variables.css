@@ -116,11 +116,6 @@
     --falla-border: #fecaca;     /* Red 200 */
     --falla-dot: #ef4444;        /* Red 500 */
 
-    --prestamo-bg: #eff6ff;      /* Blue 50 */
-    --prestamo-text: #1e40af;     /* Blue 800 */
-    --prestamo-border: #bfdbfe;  /* Blue 200 */
-    --prestamo-dot: #3b82f6;     /* Blue 500 */
-
     --baja-bg: #f4f4f5;          /* Zinc 100 */
     --baja-text: #52525b;        /* Zinc 600 */
     --baja-border: #e4e4e7;      /* Zinc 200 */
@@ -206,11 +201,6 @@
     --falla-text: #f87171;
     --falla-border: rgba(239, 68, 68, 0.3);
     --falla-dot: #ef4444;
-    
-    --prestamo-bg: rgba(59, 130, 246, 0.15);
-    --prestamo-text: #60a5fa;
-    --prestamo-border: rgba(59, 130, 246, 0.3);
-    --prestamo-dot: #3b82f6;
     
     --baja-bg: rgba(113, 113, 122, 0.15);
     --baja-text: #a1a1aa;

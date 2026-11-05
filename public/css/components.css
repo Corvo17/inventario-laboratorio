@@ -78,15 +78,6 @@ textarea:focus-visible,
     background-color: var(--falla-dot);
 }
 
-.badge-en-prestamo {
-    background-color: var(--prestamo-bg);
-    color: var(--prestamo-text);
-    border: 1px solid var(--prestamo-border);
-}
-.badge-en-prestamo .badge-dot {
-    background-color: var(--prestamo-dot);
-}
-
 .badge-de-baja {
     background-color: var(--baja-bg);
     color: var(--baja-text);
@@ -1600,9 +1591,7 @@ form.modal-form {
 
 .legend-dot.libre { background-color: #10b981; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2); }
 .legend-dot.operativo { background-color: #10b981; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2); }
-.legend-dot.falla { background-color: #ef4444; box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2); }
-.legend-dot.mantenimiento { background-color: #f59e0b; box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2); }
-.legend-dot.prestamo { background-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+.legend-dot.de-baja { background-color: #71717a; box-shadow: 0 0 0 2px rgba(113, 113, 122, 0.2); }
 
 /* 3. Contenedor y Tarjetas de Sala (Visual Lab Blueprint) */
 .mapa-salas-container {
@@ -1742,19 +1731,9 @@ form.modal-form {
     border-top-color: var(--operativo-dot);
 }
 
-.workstation-card.occupied.status-falla,
-.workstation-card.occupied.state-con-falla {
-    border-top-color: var(--falla-dot);
-}
-
-.workstation-card.occupied.status-mantenimiento,
-.workstation-card.occupied.state-en-mantenimiento {
-    border-top-color: var(--mantenimiento-dot);
-}
-
-.workstation-card.occupied.status-prestamo,
-.workstation-card.occupied.state-en-prestamo {
-    border-top-color: var(--prestamo-dot);
+.workstation-card.occupied.status-baja,
+.workstation-card.occupied.state-de-baja {
+    border-top-color: var(--baja-dot);
 }
 
 /* Código patrimonial estilizado */
@@ -1811,9 +1790,7 @@ form.modal-form {
 }
 
 .workstation-card.occupied.status-operativo .workstation-icon { color: #10b981; }
-.workstation-card.occupied.status-falla .workstation-icon { color: #ef4444; }
-.workstation-card.occupied.status-mantenimiento .workstation-icon { color: #f59e0b; }
-.workstation-card.occupied.status-prestamo .workstation-icon { color: #3b82f6; }
+.workstation-card.occupied.status-baja .workstation-icon { color: #71717a; }
 
 .workstation-info {
     width: 100%;
@@ -2115,95 +2092,8 @@ form.modal-form {
 
 
 /* ==========================================================================
-   Fase 2: Trazabilidad, Hoja de Vida y Gestión de Préstamos (Shadcn UI)
+   Fase 2: Trazabilidad y Hoja de Vida Patrimonial (Shadcn UI)
    ========================================================================== */
-
-/* Banner de Préstamo Activo (Alerta Estilo Shadcn Blue) */
-.prestamo-active-banner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0.875rem 1.125rem;
-    border-radius: var(--radius-md);
-    background-color: var(--prestamo-bg);
-    border: 1px solid var(--prestamo-border);
-    color: var(--text-primary);
-    box-shadow: var(--shadow-xs);
-    transition: var(--transition);
-}
-
-.prestamo-banner-content {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.875rem;
-    flex: 1;
-}
-
-.prestamo-banner-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: var(--radius-sm);
-    background-color: rgba(37, 99, 235, 0.12);
-    color: var(--brand-blue);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    flex-shrink: 0;
-}
-
-[data-theme="dark"] .prestamo-banner-icon {
-    background-color: rgba(59, 130, 246, 0.2);
-    color: #60a5fa;
-}
-
-.prestamo-banner-body {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    flex: 1;
-}
-
-.prestamo-banner-title {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--prestamo-text);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.prestamo-banner-details {
-    font-size: 0.8125rem;
-    color: var(--text-secondary);
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 14px;
-    line-height: 1.4;
-}
-
-.prestamo-banner-details span {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.prestamo-banner-details i {
-    color: var(--text-muted);
-    font-size: 11px;
-}
-
-.prestamo-banner-obs {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    font-style: italic;
-    margin-top: 2px;
-}
-
-.prestamo-banner-actions {
-    flex-shrink: 0;
-}
 
 /* Línea de Tiempo Vertical (.timeline-vertical) */
 .timeline-vertical {
@@ -2256,23 +2146,10 @@ form.modal-form {
     background-color: var(--operativo-bg);
 }
 
-.timeline-dot.dot-mantenimiento {
-    border-color: #f59e0b;
-    color: #f59e0b;
-    background-color: var(--mantenimiento-bg);
-}
-
-.timeline-dot.dot-prestamo-activo {
-    border-color: var(--brand-blue);
-    color: var(--brand-blue);
-    background-color: var(--prestamo-bg);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-}
-
-.timeline-dot.dot-prestamo-devuelto {
-    border-color: var(--border-strong);
-    color: var(--text-secondary);
-    background-color: var(--bg-muted);
+.timeline-dot.dot-baja {
+    border-color: #71717a;
+    color: #71717a;
+    background-color: var(--baja-bg);
 }
 
 .timeline-content {
@@ -2350,10 +2227,6 @@ form.modal-form {
 /* Modos oscuros complementarios */
 [data-theme="dark"] .timeline-dot {
     background-color: var(--bg-surface);
-}
-
-[data-theme="dark"] .timeline-dot.dot-prestamo-activo {
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
 }
 
 

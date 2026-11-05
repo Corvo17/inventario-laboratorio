@@ -1,7 +1,8 @@
-import { verificarSesion, aplicarPermisosDOM } from '../services/auth.service.js';
+import { verificarSesion, aplicarPermisosDOM, obtenerUsuarioActual, actualizarSidebarUsuario } from '../services/auth.service.js';
 import { initThemeToggle } from '../components/theme-toggle.js';
 import { initCommandPalette } from '../components/command-palette.js';
 import { obtenerMetricasDashboard } from '../services/api.service.js';
+import { Toast } from '../components/toast.js';
 
 // KPIs Superiores
 const kpiTotalEquipos = document.getElementById('kpi-total-equipos');
@@ -60,84 +61,155 @@ async function cargarDashboard() {
             const m = resMetricas.data;
 
             // 1. Total Equipos
-            animateCounter(kpiTotalEquipos, m.total_equipos);
+            const totalActivos = Number(m.total_equipos ?? 0);
+            const operativos = Number(m.operativos ?? 0);
+            const deBaja = Number(m.de_baja ?? 0);
+            const puestosOcupados = Number(m.puestos_ocupados ?? 0);
+            const enDeposito = Number(m.equipos_deposito ?? 0);
+            const tasaDisponibilidad = operativos > 0
+                ? Number(((enDeposito / operativos) * 100).toFixed(1))
+                : 0;
+
+            animateCounter(kpiTotalEquipos, totalActivos);
             if (kpiTotalDesc) {
-                kpiTotalDesc.textContent = `${m.operativos} operativos • ${m.en_prestamo} en préstamo`;
+                kpiTotalDesc.textContent = `${operativos} operativos • ${deBaja} de baja`;
             }
 
-            // 2. Tasa de Operatividad y Micro-badge de Salud
-            animateCounter(kpiTasaOperatividad, m.tasa_operatividad, '%');
+            // 2. Disponibilidad (Equipos Operativos en Depósito / Reserva vs Total Operativos)
+            if (kpiTasaOperatividad) {
+                kpiTasaOperatividad.textContent = `${enDeposito} (${tasaDisponibilidad}%)`;
+                kpiTasaOperatividad.style.color = enDeposito > 0 ? '#10b981' : '#ef4444';
+            }
             if (kpiOperatividadBar) {
+                kpiOperatividadBar.style.background = enDeposito > 0 ? '#10b981' : '#ef4444';
                 setTimeout(() => {
-                    kpiOperatividadBar.style.width = `${m.tasa_operatividad}%`;
+                    kpiOperatividadBar.style.width = `${tasaDisponibilidad}%`;
                 }, 100);
             }
             if (kpiOperatividadDesc) {
-                kpiOperatividadDesc.textContent = `${m.operativos} de ${m.total_equipos} activos en línea`;
+                kpiOperatividadDesc.textContent = `${enDeposito} en almacén de ${operativos} operativos`;
             }
-            actualizarHealthBadge(m.tasa_operatividad);
+            actualizarHealthBadge(enDeposito);
 
             // 3. Puestos Ocupados
-            animateCounter(kpiPuestosOcupados, m.puestos_ocupados);
+            animateCounter(kpiPuestosOcupados, puestosOcupados);
             if (kpiPuestosDesc) {
-                const totalCap = m.total_capacidad_puestos || m.puestos_ocupados;
-                kpiPuestosDesc.textContent = `${m.puestos_ocupados} de ${totalCap} puestos ocupados`;
+                const totalCap = m.total_capacidad_puestos || puestosOcupados;
+                kpiPuestosDesc.textContent = `${puestosOcupados} de ${totalCap} puestos ocupados`;
             }
 
             // 4. Equipos en Depósito / Reserva
-            animateCounter(kpiDeposito, m.equipos_deposito);
+            animateCounter(kpiDeposito, enDeposito);
             if (kpiDepositoDesc) {
-                kpiDepositoDesc.textContent = `${m.equipos_deposito} piezas y equipos en reserva`;
+                kpiDepositoDesc.textContent = `${enDeposito} disponibles para asignación inmediata`;
             }
 
-            // 5. Ocupación de Salas
-            renderizarOcupacionSalas(m.equipos_por_sala);
+            // 5. Ocupación de Salas y Balance de Ocupación Física
+            renderizarOcupacionSalas(m.equipos_por_sala, {
+                totalActivos,
+                puestosOcupados,
+                enDeposito,
+                deBaja
+            });
 
             // 6. Distribución de Categorías
             renderizarDistribucionCategorias(m.distribucion_categorias, m.total_equipos);
 
             // 7. Últimos Movimientos Patrimoniales
             renderizarTimelineMovimientos(m.ultimos_movimientos);
+        } else {
+            throw new Error(resMetricas?.message || 'Respuesta inválida del servidor al cargar métricas.');
         }
 
     } catch (error) {
         console.error('Error al inicializar dashboard patrimonial:', error);
+        renderizarErrorDashboard(error.message || 'No se pudo establecer conexión con el servidor o la base de datos.');
     }
 }
 
-function actualizarHealthBadge(tasa) {
+function renderizarErrorDashboard(mensajeError) {
+    if (kpiTotalEquipos) kpiTotalEquipos.textContent = '0';
+    if (kpiTotalDesc) kpiTotalDesc.textContent = 'Error de conexión';
+    if (kpiTasaOperatividad) kpiTasaOperatividad.textContent = '0 (0%)';
+    if (kpiOperatividadDesc) kpiOperatividadDesc.textContent = 'Sin datos disponibles';
+    if (kpiPuestosOcupados) kpiPuestosOcupados.textContent = '0';
+    if (kpiDeposito) kpiDeposito.textContent = '0';
+
+    const errorHtml = `
+        <div style="text-align: center; padding: 1.75rem 1rem; color: #ef4444; background: rgba(239, 68, 68, 0.04); border: 1px dashed rgba(239, 68, 68, 0.35); border-radius: var(--radius-md);">
+            <i class="fa-solid fa-circle-exclamation" style="font-size: 24px; margin-bottom: 8px;"></i>
+            <div style="font-weight: 600; font-size: 13.5px; color: var(--text-primary);">No se pudieron cargar los datos</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px; margin-bottom: 12px;">${mensajeError}</div>
+            <button type="button" class="btn btn-outline btn-sm btn-reintentar-dashboard">
+                <i class="fa-solid fa-rotate-right"></i>
+                <span>Reintentar</span>
+            </button>
+        </div>
+    `;
+
+    if (salasDistribucionList) salasDistribucionList.innerHTML = errorHtml;
+    if (categoriasDistribucionList) categoriasDistribucionList.innerHTML = errorHtml;
+    if (timelineMovimientosList) timelineMovimientosList.innerHTML = errorHtml;
+
+    document.querySelectorAll('.btn-reintentar-dashboard').forEach(btn => {
+        btn.addEventListener('click', () => cargarDashboard());
+    });
+
+    if (Toast && typeof Toast.error === 'function') {
+        Toast.error('Error de Carga', mensajeError);
+    }
+}
+
+function actualizarHealthBadge(stockReserva) {
     if (!kpiHealthBadge || !kpiHealthText) return;
 
-    if (tasa >= 90) {
+    if (stockReserva > 0) {
         kpiHealthBadge.className = 'stat-badge-health badge-operativo';
         const dot = kpiHealthBadge.querySelector('.pulse-dot');
         if (dot) dot.style.background = '#10b981';
         kpiHealthText.textContent = 'Óptimo';
-    } else if (tasa >= 75) {
-        kpiHealthBadge.className = 'stat-badge-health badge-en-mantenimiento';
-        const dot = kpiHealthBadge.querySelector('.pulse-dot');
-        if (dot) dot.style.background = '#f59e0b';
-        kpiHealthText.textContent = 'Atención';
     } else {
         kpiHealthBadge.className = 'stat-badge-health badge-con-falla';
         const dot = kpiHealthBadge.querySelector('.pulse-dot');
         if (dot) dot.style.background = '#ef4444';
-        kpiHealthText.textContent = 'Crítico';
+        kpiHealthText.textContent = 'Agotado';
     }
 }
 
 /**
- * Renderiza la ocupación de salas con desglose de puestos
+ * Renderiza la ocupación de salas con desglose de puestos y barra de consistencia física
  */
-function renderizarOcupacionSalas(salas) {
+function renderizarOcupacionSalas(salas, resumenFisico = null) {
     if (!salasDistribucionList) return;
     if (!salas || salas.length === 0) {
         salasDistribucionList.innerHTML = '<div style="color: var(--text-muted); font-size: 13px;">No hay salas registradas.</div>';
         return;
     }
 
-    salasDistribucionList.innerHTML = salas.map(sala => {
-        const esDeposito = (sala.sala_nombre || '').toLowerCase().includes('depósito') || (sala.sala_nombre || '').toLowerCase().includes('deposito') || sala.capacidad_puestos === 0;
+    let barraBalanceHtml = '';
+    if (resumenFisico && resumenFisico.totalActivos > 0) {
+        const { totalActivos, puestosOcupados, enDeposito, deBaja } = resumenFisico;
+        const pctOcupados = Math.round((puestosOcupados / totalActivos) * 100);
+        const pctDeposito = Math.round((enDeposito / totalActivos) * 100);
+        const pctBaja = Math.max(0, 100 - pctOcupados - pctDeposito);
+
+        barraBalanceHtml = `
+            <div style="padding: 10px 12px; margin-bottom: 12px; background: var(--bg-muted); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; margin-bottom: 6px;">
+                    <span style="font-weight: 600; color: var(--text-primary);">Balance de Ocupación Física</span>
+                    <span style="color: var(--text-muted);">${puestosOcupados} en puestos + ${enDeposito} en depósito + ${deBaja} de baja = <strong>${totalActivos} activos</strong></span>
+                </div>
+                <div style="display: flex; height: 7px; border-radius: 999px; overflow: hidden; background: var(--border-color); gap: 2px;">
+                    ${puestosOcupados > 0 ? `<div style="width: ${pctOcupados}%; background: #6366f1;" title="Puestos ocupados: ${puestosOcupados}"></div>` : ''}
+                    ${enDeposito > 0 ? `<div style="width: ${pctDeposito}%; background: #10b981;" title="En depósito: ${enDeposito}"></div>` : ''}
+                    ${deBaja > 0 ? `<div style="width: ${pctBaja}%; background: #71717a;" title="De baja: ${deBaja}"></div>` : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    salasDistribucionList.innerHTML = barraBalanceHtml + salas.map(sala => {
+        const esDeposito = Boolean(sala.es_deposito) || sala.tipo === 'ALMACEN' || (sala.sala_nombre || '').toLowerCase().includes('depósito') || (sala.sala_nombre || '').toLowerCase().includes('deposito');
 
         return `
             <div class="room-dist-item">
@@ -164,7 +236,7 @@ function renderizarOcupacionSalas(salas) {
                     </div>
                 ` : `
                     <div style="font-size: 11.5px; color: var(--text-secondary); background: var(--bg-muted); padding: 4px 8px; border-radius: 4px; margin-top: 2px;">
-                        Reserva de piezas, componentes y equipos en stock.
+                        Reserva de piezas, componentes y equipos en stock (${sala.operativos} disponibles para asignación inmediata).
                     </div>
                 `}
             </div>
@@ -223,14 +295,14 @@ function renderizarTimelineMovimientos(movimientos) {
                 let badgeClass = 'badge-primary';
                 let badgeLabel = 'MOVIMIENTO';
 
-                if (mov.tipo_evento === 'PRESTAMO') {
-                    iconHtml = '<i class="fa-solid fa-handshake" style="color: #6366f1; font-size: 13px;"></i>';
-                    badgeClass = 'badge-en-prestamo';
-                    badgeLabel = 'PRÉSTAMO';
-                } else if (mov.tipo_evento === 'DEVOLUCION') {
-                    iconHtml = '<i class="fa-solid fa-rotate-left" style="color: #10b981; font-size: 13px;"></i>';
+                if (mov.tipo_evento === 'REUBICACION') {
+                    iconHtml = '<i class="fa-solid fa-desktop" style="color: #6366f1; font-size: 13px;"></i>';
                     badgeClass = 'badge-operativo';
-                    badgeLabel = 'DEVUELTO';
+                    badgeLabel = 'REUBICACIÓN';
+                } else if (mov.tipo_evento === 'BAJA_EQUIPO') {
+                    iconHtml = '<i class="fa-solid fa-ban" style="color: #71717a; font-size: 13px;"></i>';
+                    badgeClass = 'badge-de-baja';
+                    badgeLabel = 'DE BAJA';
                 } else {
                     iconHtml = '<i class="fa-solid fa-box-archive" style="color: #3b82f6; font-size: 13px;"></i>';
                     badgeClass = 'badge-operativo';
@@ -261,9 +333,15 @@ function renderizarTimelineMovimientos(movimientos) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    const user = await verificarSesion();
-    if (!user) return;
+    const cachedUser = obtenerUsuarioActual();
+    if (cachedUser) {
+        actualizarSidebarUsuario(cachedUser);
+        aplicarPermisosDOM(cachedUser);
+    }
+
     cargarDashboard();
+
+    verificarSesion().catch(err => console.warn('Verificación de sesión:', err));
 
     const btnNuevo = document.getElementById('btn-header-nuevo-equipo');
     if (btnNuevo) {

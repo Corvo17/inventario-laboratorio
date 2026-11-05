@@ -1,5 +1,5 @@
 export function initThemeToggle() {
-    const toggleBtn = document.getElementById('theme-toggle-btn');
+    const toggleBtn = document.getElementById('theme-toggle-btn') || document.getElementById('theme-toggle');
     if (!toggleBtn) return;
 
     function updateButtonState(theme) {

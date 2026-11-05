@@ -128,7 +128,6 @@
                 <select id="filtro-estado" class="select-input">
                     <option value="">Todos los Estados</option>
                     <option value="OPERATIVO">Operativo</option>
-                    <option value="EN_PRESTAMO">En Préstamo</option>
                     <option value="DE_BAJA">De Baja</option>
                 </select>
             </div>
@@ -215,7 +214,6 @@
                                 <label for="select-modal-estado" class="form-label required">Estado Inicial</label>
                                 <select id="select-modal-estado" name="estado" class="form-select" required>
                                     <option value="OPERATIVO" selected>Operativo</option>
-                                    <option value="EN_PRESTAMO">En Préstamo</option>
                                     <option value="DE_BAJA">De Baja</option>
                                 </select>
                             </div>
@@ -353,7 +351,6 @@
                                 <label for="edit-estado" class="form-label required">Estado Actual</label>
                                 <select id="edit-estado" name="estado" class="form-select" required>
                                     <option value="OPERATIVO">Operativo</option>
-                                    <option value="EN_PRESTAMO">En Préstamo</option>
                                     <option value="DE_BAJA">De Baja</option>
                                 </select>
                             </div>
@@ -436,11 +433,7 @@
             <div class="modal-header" style="border-bottom: 1px solid #fee2e2; background-color: #fef2f2;">
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <div style="width: 32px; height: 32px; border-radius: 50%; background: #fee2e2; color: #dc2626; display: flex; align-items: center; justify-content: center;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                            <line x1="12" y1="9" x2="12" y2="13"></line>
-                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                        </svg>
+                        <i class="fa-solid fa-triangle-exclamation" style="font-size: 15px;"></i>
                     </div>
                     <div>
                         <h3 id="modal-baja-title" class="modal-title" style="color: #991b1b;">Desincorporar Activo</h3>
@@ -544,9 +537,6 @@
                         <span style="font-size: 11.5px; color: var(--text-muted); font-weight: 500;">Historial cronológico unificado</span>
                     </div>
 
-                    <!-- Banner de Préstamo Activo (si el activo está EN_PRESTAMO) -->
-                    <div id="prestamo-banner-container" style="display: none; margin-bottom: 1rem;"></div>
-
                     <!-- Línea de Tiempo Vertical Unificada -->
                     <div id="detalle-timeline-container" class="timeline-vertical">
                         <div class="timeline-empty">
@@ -560,13 +550,7 @@
                 </div>
             </div>
 
-            <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <button type="button" id="btn-abrir-prestamo" class="btn btn-outline" style="display: none;" title="Asignar este equipo en préstamo">
-                        <i class="fa-solid fa-handshake"></i>
-                        <span>Registrar Préstamo</span>
-                    </button>
-                </div>
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 8px;">
                 <div style="display: flex; gap: 8px; align-items: center;">
                     <button type="button" id="btn-imprimir-acta" class="btn btn-outline">
                         <i class="fa-solid fa-print"></i>
@@ -618,77 +602,6 @@
                     <button type="button" id="btn-imprimir-qr" class="btn btn-primary"><i class="fa-solid fa-print"></i><span>Imprimir Etiqueta</span></button>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- Modal: Asignar Equipo en Préstamo (#modal-prestamo-equipo) -->
-    <div id="modal-prestamo-equipo" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-prestamo-title" style="display: none;">
-        <div class="modal-card" style="max-width: 520px;">
-            <div class="modal-header">
-                <div>
-                    <h3 id="modal-prestamo-title" class="modal-title">Asignar Equipo en Préstamo</h3>
-                    <p class="modal-description" id="modal-prestamo-subtitle">Registra la salida formal del activo para uso institucional o académico.</p>
-                </div>
-                <button type="button" id="btn-cerrar-prestamo" class="btn-icon" aria-label="Cerrar modal"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-
-            <form id="form-prestamo-equipo">
-                <input type="hidden" id="prestamo-equipo-id" name="equipo_id" value="">
-                <div class="modal-body" style="display: flex; flex-direction: column; gap: 1rem;">
-                    <!-- Mini ficha del activo -->
-                    <div style="padding: 0.75rem 1rem; border-radius: var(--radius-md); background: var(--bg-muted); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
-                        <div>
-                            <div id="prestamo-activo-codigo" class="cell-code" style="font-size: 13px;">PAT-000</div>
-                            <div id="prestamo-activo-nombre" style="font-weight: 600; font-size: 14px; color: var(--text-primary); margin-top: 2px;">Equipo</div>
-                        </div>
-                        <span id="prestamo-activo-categoria" class="cat-tag">EQUIPO</span>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="prestamo-solicitante" class="form-label">
-                            Nombre del Solicitante / Docente <span class="required" style="color: var(--destructive); font-weight: bold;">*</span>
-                        </label>
-                        <input type="text" id="prestamo-solicitante" name="solicitante_nombre" class="form-control" placeholder="Ej. Prof. Carlos Mendoza" required autocomplete="off">
-                    </div>
-
-                    <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                        <div class="form-group">
-                            <label for="prestamo-identificacion" class="form-label">
-                                Cédula / ID Institucional <span class="required" style="color: var(--destructive); font-weight: bold;">*</span>
-                            </label>
-                            <input type="text" id="prestamo-identificacion" name="solicitante_identificacion" class="form-control" placeholder="Ej. 14.582.910" required autocomplete="off">
-                        </div>
-                        <div class="form-group">
-                            <label for="prestamo-fecha-estimada" class="form-label">
-                                Fecha Estimada Devolución <span class="required" style="color: var(--destructive); font-weight: bold;">*</span>
-                            </label>
-                            <input type="date" id="prestamo-fecha-estimada" name="fecha_devolucion_estimada" class="form-control" required>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="prestamo-destino" class="form-label">
-                            Aula o Destino de Uso <span class="required" style="color: var(--destructive); font-weight: bold;">*</span>
-                        </label>
-                        <input type="text" id="prestamo-destino" name="destino_uso" class="form-control" placeholder="Ej. Aula Magna / Defensa de Grado" required autocomplete="off">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="prestamo-observaciones" class="form-label">
-                            Observaciones de entrega
-                        </label>
-                        <textarea id="prestamo-observaciones" name="observaciones" class="form-control" rows="2" placeholder="Estado inicial de entrega, cables, accesorios, control remoto, etc."></textarea>
-                    </div>
-                </div>
-
-                <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 8px;">
-                    <button type="button" id="btn-cancelar-prestamo" class="btn btn-outline">Cancelar</button>
-                    <button type="submit" id="btn-guardar-prestamo" class="btn btn-primary">
-                        <i class="fa-solid fa-handshake"></i>
-                        <span>Confirmar Préstamo</span>
-                    </button>
-                </div>
-            </form>
         </div>
     </div>
 

@@ -15,9 +15,7 @@ import {
     actualizarEquipo,
     generarUrlQr,
     apiService,
-    obtenerHojaVidaEquipo,
-    registrarPrestamoEquipo,
-    registrarDevolucionEquipo
+    obtenerHojaVidaEquipo
 } from '../services/api.service.js';
 import { renderStatusBadge } from '../components/status-badge.js';
 import { Toast } from '../components/toast.js';
@@ -59,25 +57,7 @@ const qrPuestoDisplay = document.getElementById('qr-puesto-display');
 
 // Modal: Ficha Técnica Detallada
 const modalDetalle = document.getElementById('modal-detalle-equipo');
-const btnAbrirPrestamo = document.getElementById('btn-abrir-prestamo');
-const prestamoBannerContainer = document.getElementById('prestamo-banner-container');
 const detalleTimelineContainer = document.getElementById('detalle-timeline-container');
-
-// Modal: Gestión de Préstamos
-const modalPrestamo = document.getElementById('modal-prestamo-equipo');
-const btnCerrarPrestamo = document.getElementById('btn-cerrar-prestamo');
-const btnCancelarPrestamo = document.getElementById('btn-cancelar-prestamo');
-const formPrestamo = document.getElementById('form-prestamo-equipo');
-const prestamoEquipoId = document.getElementById('prestamo-equipo-id');
-const prestamoActivoCodigo = document.getElementById('prestamo-activo-codigo');
-const prestamoActivoNombre = document.getElementById('prestamo-activo-nombre');
-const prestamoActivoCategoria = document.getElementById('prestamo-activo-categoria');
-const prestamoSolicitante = document.getElementById('prestamo-solicitante');
-const prestamoIdentificacion = document.getElementById('prestamo-identificacion');
-const prestamoFechaEstimada = document.getElementById('prestamo-fecha-estimada');
-const prestamoDestino = document.getElementById('prestamo-destino');
-const prestamoObservaciones = document.getElementById('prestamo-observaciones');
-const btnGuardarPrestamo = document.getElementById('btn-guardar-prestamo');
 
 const btnCerrarDetalle = document.getElementById('btn-cerrar-detalle');
 const btnCerrarDetallePie = document.getElementById('btn-cerrar-detalle-pie');
@@ -114,7 +94,7 @@ const formBaja = document.getElementById('form-confirmar-baja');
 const btnCerrarBaja = document.getElementById('btn-cerrar-baja');
 const btnCancelarBaja = document.getElementById('btn-cancelar-baja');
 const inputBajaId = document.getElementById('baja-equipo-id');
-const bajaCodigoDisplay = document.getElementById('baja-codigo-display');
+const bajaCodigoDisplay = document.getElementById('baja-equipo-codigo') || document.getElementById('baja-codigo-display');
 const alertBaja = document.getElementById('modal-baja-alert');
 
 // Estado local de la vista
@@ -327,6 +307,36 @@ export async function cargarEquipos() {
 window.cargarEquipos = cargarInventario;
 window.cargarInventario = cargarInventario;
 
+function renderErrorState(message = 'Error al cargar el inventario') {
+    if (!tablaEquipos) return;
+    tablaEquipos.innerHTML = `
+        <tr>
+            <td colspan="6">
+                <div class="empty-state" style="border: 1px dashed rgba(239, 68, 68, 0.35); background: rgba(239, 68, 68, 0.03); border-radius: var(--radius-md); margin: 0.75rem;">
+                    <div class="empty-state-icon">
+                        <i class="fa-solid fa-circle-exclamation" style="font-size: 24px; color: #ef4444;"></i>
+                    </div>
+                    <div class="empty-state-title" style="color: var(--text-primary);">No se pudieron cargar los activos</div>
+                    <div class="empty-state-desc">${message}</div>
+                    <button id="btn-retry-inventario" class="btn btn-primary" style="margin-top: 10px;">
+                        <i class="fa-solid fa-rotate-right"></i>
+                        <span>Reintentar Carga</span>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `;
+
+    const btnRetry = document.getElementById('btn-retry-inventario');
+    if (btnRetry) {
+        btnRetry.addEventListener('click', () => cargarInventario());
+    }
+
+    if (counterEquipos) {
+        counterEquipos.textContent = 'Error de conexión';
+    }
+}
+
 async function cargarInventario() {
     renderSkeletonLoading();
     if (counterEquipos) {
@@ -338,13 +348,13 @@ async function cargarInventario() {
         if (respuesta && respuesta.success && Array.isArray(respuesta.data)) {
             renderizarTabla(respuesta.data);
         } else {
-            renderEmptyState('Error al cargar datos: ' + (respuesta?.message || 'Respuesta inválida'));
+            renderErrorState(respuesta?.message || 'Respuesta inválida del servidor.');
         }
     } catch (error) {
         console.error('Error al cargar inventario:', error);
-        renderEmptyState('No se pudo conectar con la API en PHP. Verifica que el servidor esté activo.');
-        if (counterEquipos) {
-            counterEquipos.textContent = 'Error al cargar';
+        renderErrorState(error.message || 'No se pudo conectar con la API en PHP. Verifica que el servidor y MySQL estén activos.');
+        if (Toast && typeof Toast.error === 'function') {
+            Toast.error('Error de Conexión', error.message || 'No se pudo cargar el inventario.');
         }
     }
 }
@@ -555,8 +565,6 @@ async function abrirModalDetalle(id) {
     detalleSalaNombre.textContent = '';
     detallePuestoNombre.textContent = '';
     detalleBadgeEstado.innerHTML = '';
-    if (prestamoBannerContainer) prestamoBannerContainer.style.display = 'none';
-    if (btnAbrirPrestamo) btnAbrirPrestamo.style.display = 'none';
     if (detalleTimelineContainer) {
         detalleTimelineContainer.innerHTML = `
             <div class="timeline-empty">
@@ -578,6 +586,7 @@ async function abrirModalDetalle(id) {
         const data = res.data;
         const eq = data.equipo || {};
         equipoDetalleActual = eq;
+        equipoDetalleActual.timeline = data.timeline || [];
 
         detalleCodigo.textContent = eq.codigo_patrimonial || 'PAT-000';
         detalleCategoriaTag.textContent = (eq.categoria || 'EQUIPO').replace(/_/g, ' ');
@@ -594,59 +603,6 @@ async function abrirModalDetalle(id) {
         detalleSpecMac.textContent = eq.mac_address || 'No registrada';
         detalleSpecFecha.textContent = eq.fecha_ingreso || 'N/A';
         detalleNotas.textContent = eq.notas || 'Sin observaciones adicionales registradas.';
-
-        // Banner de Préstamo Activo
-        const prestamoActivo = data.prestamo_activo;
-        if (eq.estado === 'EN_PRESTAMO' || prestamoActivo) {
-            const p = prestamoActivo || {};
-            if (prestamoBannerContainer) {
-                prestamoBannerContainer.className = 'prestamo-active-banner';
-                prestamoBannerContainer.style.display = 'flex';
-                prestamoBannerContainer.innerHTML = `
-                    <div class="prestamo-banner-content">
-                        <div class="prestamo-banner-icon">
-                            <i class="fa-solid fa-handshake-angle"></i>
-                        </div>
-                        <div class="prestamo-banner-body">
-                            <div class="prestamo-banner-title">
-                                <span>Activo Asignado en Préstamo</span>
-                                <span class="status-badge badge-primary" style="font-size: 10px; padding: 1px 6px;">VIGENTE</span>
-                            </div>
-                            <div class="prestamo-banner-details">
-                                <span><i class="fa-solid fa-user-tie"></i> <strong>Docente / Solicitante:</strong> ${p.solicitante_nombre || 'N/A'} (ID: ${p.solicitante_identificacion || 'N/A'})</span>
-                                <span><i class="fa-solid fa-location-dot"></i> <strong>Destino:</strong> ${p.destino_uso || 'N/A'}</span>
-                                <span><i class="fa-regular fa-calendar"></i> <strong>Salida:</strong> ${p.fecha_prestamo ? p.fecha_prestamo.split(' ')[0] : 'N/A'}</span>
-                                ${p.fecha_devolucion_estimada ? `<span><i class="fa-regular fa-calendar-check"></i> <strong>Devolución Estimada:</strong> ${p.fecha_devolucion_estimada}</span>` : ''}
-                            </div>
-                            ${p.observaciones ? `<div class="prestamo-banner-obs"><i class="fa-regular fa-comment-dots"></i> ${p.observaciones}</div>` : ''}
-                        </div>
-                    </div>
-                    <div class="prestamo-banner-actions">
-                        <button type="button" id="btn-devolver-prestamo" class="btn btn-sm btn-primary">
-                            <i class="fa-solid fa-rotate-left"></i>
-                            <span>Registrar Devolución</span>
-                        </button>
-                    </div>
-                `;
-                const btnDevolver = document.getElementById('btn-devolver-prestamo');
-                if (btnDevolver) {
-                    btnDevolver.onclick = async () => {
-                        await ejecutarDevolucion(eq.id, p.id || 0);
-                    };
-                }
-            }
-            if (btnAbrirPrestamo) btnAbrirPrestamo.style.display = 'none';
-        } else {
-            if (prestamoBannerContainer) prestamoBannerContainer.style.display = 'none';
-            if (eq.estado === 'OPERATIVO') {
-                if (btnAbrirPrestamo) {
-                    btnAbrirPrestamo.style.display = 'inline-flex';
-                    btnAbrirPrestamo.onclick = () => abrirModalPrestamo(eq);
-                }
-            } else {
-                if (btnAbrirPrestamo) btnAbrirPrestamo.style.display = 'none';
-            }
-        }
 
         // Renderizar Línea de Tiempo Unificada
         const timeline = data.timeline || [];
@@ -668,26 +624,18 @@ async function abrirModalDetalle(id) {
                     if (item.tipo === 'ALTA') {
                         dotClass = 'dot-alta';
                         iconName = 'fa-box-archive';
-                        badgeHtml = '<span class="status-badge badge-success">INCORPORACIÓN</span>';
+                        badgeHtml = '<span class="status-badge badge-operativo">INCORPORACIÓN</span>';
                         bodyDetailsHtml = `<div>${item.descripcion || 'Alta formal en el inventario del laboratorio.'}</div>`;
                     } else if (item.tipo === 'REUBICACION') {
                         dotClass = 'dot-alta';
                         iconName = 'fa-desktop';
-                        badgeHtml = '<span class="status-badge badge-primary">PUESTO FÍSICO</span>';
+                        badgeHtml = '<span class="status-badge badge-operativo">PUESTO FÍSICO</span>';
                         bodyDetailsHtml = `<div>${item.descripcion || item.ubicacion || 'Asignación física a puesto en sala.'}</div>`;
-                    } else if (item.tipo === 'PRESTAMO') {
-                        const esActivo = (item.estado === 'ACTIVO');
-                        dotClass = esActivo ? 'dot-prestamo-activo' : 'dot-prestamo-devuelto';
-                        iconName = esActivo ? 'fa-handshake-angle' : 'fa-handshake';
-                        badgeHtml = `<span class="status-badge ${esActivo ? 'badge-primary' : 'badge-outline'}">${esActivo ? 'PRÉSTAMO ACTIVO' : 'DEVUELTO'}</span>`;
-                        bodyDetailsHtml = `
-                            <div><strong>Destino:</strong> ${item.destino_uso || 'No especificado'} • <strong>Docente/Solicitante:</strong> ${item.solicitante_nombre || 'N/A'} (ID: ${item.solicitante_identificacion || 'N/A'})</div>
-                            ${item.observaciones ? `<div style="font-size: 12px; color: var(--text-muted); margin-top: 3px; font-style: italic;">Obs: ${item.observaciones}</div>` : ''}
-                            <div class="timeline-meta-grid">
-                                <span><i class="fa-regular fa-calendar-check"></i> ${item.fecha_devolucion_real ? 'Devuelto: ' + item.fecha_devolucion_real.split(' ')[0] : (item.fecha_devolucion_estimada ? 'Estimado: ' + item.fecha_devolucion_estimada : 'Sin fecha estimada')}</span>
-                                <span><i class="fa-solid fa-user-tag"></i> ${item.solicitante_nombre || ''}</span>
-                            </div>
-                        `;
+                    } else if (item.tipo === 'BAJA') {
+                        dotClass = 'dot-baja';
+                        iconName = 'fa-ban';
+                        badgeHtml = '<span class="status-badge badge-de-baja">DE BAJA</span>';
+                        bodyDetailsHtml = `<div>${item.descripcion || 'Activo desincorporado del inventario operativo.'}</div>`;
                     }
 
                     const fechaVisual = item.fecha ? item.fecha.replace('T', ' ') : 'N/A';
@@ -809,61 +757,6 @@ function cerrarModalBaja() {
 /* ==========================================================================
    INICIALIZACIÓN DE EVENTOS GLOBALES
    ========================================================================== */
-
-
-/* ==========================================================================
-   MODAL 6: GESTIÓN DE PRÉSTAMOS (FASE 2)
-   ========================================================================== */
-
-function abrirModalPrestamo(equipo) {
-    if (!modalPrestamo) return;
-    if (formPrestamo) formPrestamo.reset();
-
-    if (prestamoEquipoId) prestamoEquipoId.value = equipo.id;
-    if (prestamoActivoCodigo) prestamoActivoCodigo.textContent = equipo.codigo_patrimonial || 'PAT-000';
-    if (prestamoActivoNombre) prestamoActivoNombre.textContent = `${equipo.marca || ''} ${equipo.modelo || ''}`.trim() || 'Activo';
-    if (prestamoActivoCategoria) prestamoActivoCategoria.textContent = (equipo.categoria || 'EQUIPO').replace(/_/g, ' ');
-
-    // Sugerir fecha estimada de retorno: mañana
-    const manana = new Date();
-    manana.setDate(manana.getDate() + 1);
-    const yyyy = manana.getFullYear();
-    const mm = String(manana.getMonth() + 1).padStart(2, '0');
-    const dd = String(manana.getDate()).padStart(2, '0');
-    if (prestamoFechaEstimada) prestamoFechaEstimada.value = `${yyyy}-${mm}-${dd}`;
-
-    modalPrestamo.classList.add('open');
-    modalPrestamo.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-
-    setTimeout(() => {
-        if (prestamoSolicitante) prestamoSolicitante.focus();
-    }, 100);
-}
-
-function cerrarModalPrestamo() {
-    if (!modalPrestamo) return;
-    modalPrestamo.classList.remove('open');
-    modalPrestamo.style.display = 'none';
-    document.body.style.overflow = '';
-}
-
-async function ejecutarDevolucion(equipoId, prestamoId = 0) {
-    try {
-        const respuesta = await registrarDevolucionEquipo({ equipo_id: equipoId, prestamo_id: prestamoId });
-        if (respuesta && respuesta.success) {
-            Toast.success('Devolución Registrada', 'El equipo fue retornado al laboratorio y restaurado a estado OPERATIVO.');
-            await cargarInventario();
-            await abrirModalDetalle(equipoId);
-        } else {
-            Toast.error('Error al Devolver', respuesta?.message || 'No se pudo procesar la devolución.');
-        }
-    } catch (err) {
-        console.error('Error en devolución:', err);
-        Toast.error('Error al Devolver', err.message || 'Error de conexión.');
-    }
-}
-
 
 async function inicializarVistaInventario() {
     // 0. Sincronización inmediata del Usuario desde caché local (sin latencia de red)
@@ -999,7 +892,7 @@ async function inicializarVistaInventario() {
     if (btnImprimirActaDirecta) {
         btnImprimirActaDirecta.addEventListener('click', async () => {
             if (equipoDetalleActual && (equipoDetalleActual.id || equipoDetalleActual.codigo_patrimonial)) {
-                await imprimirActaEquipo(equipoDetalleActual, equipoDetalleActual.historial_prestamos || []);
+                await imprimirActaEquipo(equipoDetalleActual, equipoDetalleActual.timeline || []);
             } else {
                 Toast.warning('Atención', 'No hay datos cargados del activo.');
             }
@@ -1074,7 +967,7 @@ async function inicializarVistaInventario() {
                 Toast.warning('Atención', 'No hay un equipo seleccionado para generar el acta.');
                 return;
             }
-            imprimirActaEquipo(equipoDetalleActual, equipoDetalleActual.historial_prestamos || []);
+            imprimirActaEquipo(equipoDetalleActual, equipoDetalleActual.timeline || []);
         });
     }
 
@@ -1171,7 +1064,7 @@ async function inicializarVistaInventario() {
             }
 
             const id = inputBajaId.value;
-            const motivo = document.getElementById('input-motivo-baja')?.value.trim() || '';
+            const motivo = (document.getElementById('baja-motivo') || document.getElementById('input-motivo-baja'))?.value.trim() || '';
 
             try {
                 const res = await fetch(`../api/routes/equipos.php?action=dar-de-baja&id=${id}`, {
@@ -1201,59 +1094,6 @@ async function inicializarVistaInventario() {
                 if (btnSubmit) {
                     btnSubmit.disabled = false;
                     btnSubmit.innerHTML = originalBajaHtml;
-                }
-            }
-        });
-    }
-    
-    // Eventos Modal Préstamos y Prevención de Doble Clic
-    if (btnCerrarPrestamo) btnCerrarPrestamo.addEventListener('click', cerrarModalPrestamo);
-    if (btnCancelarPrestamo) btnCancelarPrestamo.addEventListener('click', cerrarModalPrestamo);
-    if (modalPrestamo) {
-        modalPrestamo.addEventListener('click', (e) => {
-            if (e.target === modalPrestamo) cerrarModalPrestamo();
-        });
-    }
-
-    if (formPrestamo) {
-        formPrestamo.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btnSubmit = document.getElementById('btn-guardar-prestamo');
-            const originalPrestamoHtml = btnSubmit ? btnSubmit.innerHTML : '';
-            if (btnSubmit) {
-                btnSubmit.disabled = true;
-                btnSubmit.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Guardando...';
-            }
-
-            const equipoId = prestamoEquipoId ? prestamoEquipoId.value : '';
-            const payload = {
-                equipo_id: equipoId,
-                solicitante_nombre: prestamoSolicitante ? prestamoSolicitante.value.trim() : '',
-                solicitante_identificacion: prestamoIdentificacion ? prestamoIdentificacion.value.trim() : '',
-                destino_uso: prestamoDestino ? prestamoDestino.value.trim() : '',
-                fecha_devolucion_estimada: prestamoFechaEstimada ? prestamoFechaEstimada.value : null,
-                observaciones: prestamoObservaciones ? prestamoObservaciones.value.trim() : null
-            };
-
-            try {
-                const res = await registrarPrestamoEquipo(payload);
-                if (res && res.success) {
-                    Toast.success('Préstamo Registrado', 'El activo fue asignado en préstamo correctamente.');
-                    cerrarModalPrestamo();
-                    await cargarInventario();
-                    if (equipoDetalleActual && equipoDetalleActual.id === parseInt(equipoId, 10)) {
-                        await abrirModalDetalle(equipoId);
-                    }
-                } else {
-                    Toast.error('Error al Registrar Préstamo', res?.message || 'No se pudo procesar el préstamo.');
-                }
-            } catch (err) {
-                console.error('Error al registrar préstamo:', err);
-                Toast.error('Error', err.message || 'Error de conexión.');
-            } finally {
-                if (btnSubmit) {
-                    btnSubmit.disabled = false;
-                    btnSubmit.innerHTML = originalPrestamoHtml;
                 }
             }
         });
@@ -1360,8 +1200,6 @@ document.addEventListener('click', (e) => {
                 cerrarModalQr();
             } else if (modal.id === 'modal-detalle-equipo') {
                 cerrarModalDetalle();
-            } else if (modal.id === 'modal-prestamo-equipo') {
-                cerrarModalPrestamo();
             } else {
                 modal.classList.remove('open');
                 modal.style.display = 'none';
@@ -1379,6 +1217,5 @@ document.addEventListener('keydown', (e) => {
         if (modalBaja && modalBaja.classList.contains('open')) cerrarModalBaja();
         if (modalQr && modalQr.classList.contains('open')) cerrarModalQr();
         if (modalDetalle && modalDetalle.classList.contains('open')) cerrarModalDetalle();
-        if (modalPrestamo && modalPrestamo.classList.contains('open')) cerrarModalPrestamo();
     }
 });

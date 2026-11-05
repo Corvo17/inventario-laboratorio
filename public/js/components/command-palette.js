@@ -145,7 +145,7 @@ export function initCommandPalette() {
                 id: 'nav-inv',
                 grupo: 'Navegación Rápida',
                 titulo: 'Inventario de Equipos & Activos',
-                subtitulo: 'Parque tecnológico, trazabilidad, códigos patrimoniales y préstamos',
+                subtitulo: 'Parque tecnológico, trazabilidad y códigos patrimoniales',
                 icono: 'fa-server',
                 badge: 'Vista',
                 keywords: 'inventario equipos activos hardware pcs computadoras laptops',
@@ -156,7 +156,7 @@ export function initCommandPalette() {
                 grupo: 'Navegación Rápida',
                 titulo: 'Mapa de Ubicaciones & Puestos',
                 subtitulo: 'Distribución física interactiva de laboratorios y puestos libres',
-                icono: 'fa-map-location-dot',
+                icono: 'fa-location-dot',
                 badge: 'Vista',
                 keywords: 'ubicaciones salas puestos mapa laboratorios plano distribución',
                 action: () => { window.location.href = 'ubicaciones.html'; }
@@ -170,7 +170,7 @@ export function initCommandPalette() {
                 grupo: 'Acciones Rápidas',
                 titulo: 'Registrar Nuevo Equipo',
                 subtitulo: 'Dar de alta un activo patrimonial en el sistema',
-                icono: 'fa-plus-circle',
+                icono: 'fa-circle-plus',
                 badge: 'Acción',
                 keywords: 'nuevo equipo agregar crear activo alta registrar hardware',
                 action: () => {
@@ -260,7 +260,7 @@ export function initCommandPalette() {
                     grupo: 'Activos & Equipos',
                     titulo: `${eq.codigo_patrimonial} — ${eq.marca} ${eq.modelo}`,
                     subtitulo: `${salaPuesto} • S/N: ${eq.numero_serie || 'N/A'} • IP: ${eq.ip_asignada || 'No asignada'}`,
-                    icono: 'fa-computer',
+                    icono: 'fa-desktop',
                     badge: eq.estado,
                     keywords: `${eq.codigo_patrimonial} ${eq.marca} ${eq.modelo} ${eq.numero_serie}`,
                     action: () => {
@@ -441,9 +441,6 @@ function getBadgeClass(badge) {
     if (!badge) return 'badge-neutral';
     switch (badge.toUpperCase()) {
         case 'OPERATIVO': return 'badge-success';
-        case 'CON_FALLA': return 'badge-destructive';
-        case 'EN_MANTENIMIENTO': return 'badge-warning';
-        case 'EN_PRESTAMO': return 'badge-primary';
         case 'DE_BAJA': return 'badge-muted';
         case 'VISTA': return 'badge-blue';
         case 'ACCIÓN': return 'badge-primary';
