@@ -407,9 +407,10 @@ textarea:focus-visible,
 
 
 /* ==========================================================================
-   Modal Accesible Shadcn UI (.modal-backdrop y .modal-container)
+   Modal Accesible Shadcn UI (.modal-backdrop y .modal-overlay)
    ========================================================================== */
-.modal-backdrop {
+.modal-backdrop,
+.modal-overlay {
     position: fixed;
     inset: 0;
     background-color: rgba(15, 23, 42, 0.6);
@@ -418,16 +419,28 @@ textarea:focus-visible,
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 50;
+    z-index: 1000;
     padding: 1.5rem;
     opacity: 0;
     visibility: hidden;
+    pointer-events: none;
     transition: opacity 0.2s ease, visibility 0.2s ease;
 }
 
-.modal-backdrop.open {
-    opacity: 1;
-    visibility: visible;
+.modal-backdrop:not(.active):not(.open),
+.modal-overlay:not(.active):not(.open) {
+    pointer-events: none;
+    visibility: hidden;
+    opacity: 0;
+}
+
+.modal-backdrop.open,
+.modal-backdrop.active,
+.modal-overlay.open,
+.modal-overlay.active {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
 }
 
 .modal-card,
@@ -449,7 +462,16 @@ textarea:focus-visible,
 
 .modal-backdrop.open .modal-card,
 .modal-backdrop.open .modal-dialog,
-.modal-backdrop.open .modal-content {
+.modal-backdrop.open .modal-content,
+.modal-backdrop.active .modal-card,
+.modal-backdrop.active .modal-dialog,
+.modal-backdrop.active .modal-content,
+.modal-overlay.open .modal-card,
+.modal-overlay.open .modal-dialog,
+.modal-overlay.open .modal-content,
+.modal-overlay.active .modal-card,
+.modal-overlay.active .modal-dialog,
+.modal-overlay.active .modal-content {
     transform: scale(1) translateY(0);
 }
 

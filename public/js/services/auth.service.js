@@ -138,6 +138,13 @@ export function aplicarPermisosDOM(user = null) {
     const usuario = user || obtenerUsuarioActual();
     const isAdmin = usuario?.rol === 'ADMIN';
 
+    // Protección de vista exclusiva para Administradores (usuarios.html)
+    const currentPath = window.location.pathname.toLowerCase();
+    if (!isAdmin && currentPath.endsWith('usuarios.html')) {
+        window.location.href = 'index.html';
+        return;
+    }
+
     // Elementos restringidos exclusivamente a Administradores
     const adminElements = document.querySelectorAll('[data-role="ADMIN"]');
     adminElements.forEach(el => {
@@ -196,19 +203,25 @@ export function actualizarSidebarUsuario(user = null) {
  * Inyecta y conecta el Modal de Configuración y Respaldo SQL
  */
 export function inyectarModalConfiguracion(user = null) {
-    const usuario = user || obtenerUsuarioActual();
-    if (!usuario) return;
+    const usuario = user || obtenerUsuarioActual() || {
+        nombre: 'Usuario Activo',
+        email: 'sesion@lab.local',
+        rol: 'OPERADOR'
+    };
 
-    // Conectar botón de engranaje en el sidebar
-    const gearBtn = document.querySelector('.sidebar-action-btn') || document.getElementById('btn-sidebar-config');
-    if (gearBtn && !gearBtn.dataset.configBound) {
-        gearBtn.dataset.configBound = 'true';
-        gearBtn.setAttribute('title', 'Configuración & Respaldo');
-        gearBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            abrirModalConfiguracion();
-        });
-    }
+    // Conectar botón de engranaje en el sidebar (soporta todos los selectores estándar)
+    const gearButtons = document.querySelectorAll('.sidebar-action-btn, #btn-config-sistema, #btn-sidebar-config');
+    gearButtons.forEach((gearBtn) => {
+        if (!gearBtn.dataset.configBound) {
+            gearBtn.dataset.configBound = 'true';
+            gearBtn.setAttribute('title', 'Configuración & Respaldo');
+            gearBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                abrirModalConfiguracion();
+            });
+        }
+    });
 
     if (document.getElementById('modal-configuracion-sistema')) {
         actualizarDatosModalConfiguracion(usuario);
@@ -216,8 +229,8 @@ export function inyectarModalConfiguracion(user = null) {
     }
 
     const modalHTML = `
-    <div id="modal-configuracion-sistema" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; padding: 16px;">
-        <div class="modal-card" style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-lg, 12px); width: 100%; max-width: 520px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1); overflow: hidden; display: flex; flexDirection: column;">
+    <div id="modal-configuracion-sistema" class="modal-backdrop modal-overlay" role="dialog" aria-modal="true" aria-hidden="true" style="display: none;">
+        <div class="modal-card" style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-lg, 12px); width: 100%; max-width: 520px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column;">
             
             <!-- Encabezado Modal -->
             <div style="padding: 18px 22px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; background: var(--bg-muted);">
@@ -230,7 +243,7 @@ export function inyectarModalConfiguracion(user = null) {
                         <p style="margin: 0; font-size: 0.75rem; color: var(--text-muted);">Auditoría, respaldos y control de sesión</p>
                     </div>
                 </div>
-                <button type="button" id="btn-cerrar-modal-config" class="btn-icon" aria-label="Cerrar modal" style="background: transparent; border: none; font-size: 16px; cursor: pointer; color: var(--text-muted); padding: 6px; border-radius: 6px;">
+                <button type="button" id="btn-cerrar-modal-config" class="btn-icon modal-close-btn" aria-label="Cerrar modal" style="background: transparent; border: none; font-size: 16px; cursor: pointer; color: var(--text-muted); padding: 6px; border-radius: 6px;">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
@@ -301,7 +314,7 @@ export function inyectarModalConfiguracion(user = null) {
 
                 <!-- Sección 3: Cierre de Sesión -->
                 <div style="border-top: 1px solid var(--border-color); padding-top: 16px;">
-                    <button type="button" id="btn-logout-sistema" class="btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; padding: 10px 16px; background: rgba(239, 68, 68, 0.08); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 6px; cursor: pointer; transition: background 0.15s ease;">
+                    <button type="button" id="btn-logout" class="btn btn-logout-sistema" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; padding: 10px 16px; background: rgba(239, 68, 68, 0.08); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 6px; cursor: pointer; transition: background 0.15s ease;">
                         <i class="fa-solid fa-arrow-right-from-bracket"></i>
                         <span>Cerrar Sesión</span>
                     </button>
@@ -317,7 +330,7 @@ export function inyectarModalConfiguracion(user = null) {
     const modal = document.getElementById('modal-configuracion-sistema');
     const btnCerrar = document.getElementById('btn-cerrar-modal-config');
     const btnBackup = document.getElementById('btn-descargar-backup-sql');
-    const btnLogout = document.getElementById('btn-logout-sistema');
+    const btnLogout = document.getElementById('btn-logout') || document.getElementById('btn-logout-sistema');
 
     if (btnCerrar) {
         btnCerrar.addEventListener('click', cerrarModalConfiguracion);
@@ -330,7 +343,7 @@ export function inyectarModalConfiguracion(user = null) {
     }
 
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && modal && modal.style.display === 'flex') {
+        if (e.key === 'Escape' && modal && (modal.classList.contains('open') || modal.classList.contains('active') || modal.style.display === 'flex')) {
             cerrarModalConfiguracion();
         }
     });
@@ -343,39 +356,80 @@ export function inyectarModalConfiguracion(user = null) {
     }
 
     if (btnLogout) {
-        btnLogout.addEventListener('click', () => {
-            if (confirm('¿Está seguro de que desea cerrar la sesión actual?')) {
-                Toast.info('Cerrando Sesión', 'Redirigiendo a pantalla de acceso...', 2000);
-                setTimeout(cerrarSesion, 300);
-            }
+        btnLogout.addEventListener('click', (e) => {
+            e.preventDefault();
+            Toast.info('Cerrando Sesión', 'Redirigiendo a pantalla de acceso...', 1500);
+            setTimeout(cerrarSesion, 250);
         });
     }
 
     actualizarDatosModalConfiguracion(usuario);
 }
 
-function abrirModalConfiguracion() {
+export function abrirModalConfiguracion() {
+    if (!document.getElementById('modal-configuracion-sistema')) {
+        inyectarModalConfiguracion();
+    }
     const modal = document.getElementById('modal-configuracion-sistema');
     if (modal) {
-        modal.style.display = 'flex';
+        actualizarDatosModalConfiguracion(obtenerUsuarioActual());
         aplicarPermisosDOM();
+        modal.style.display = 'flex';
+        modal.setAttribute('aria-hidden', 'false');
+        requestAnimationFrame(() => {
+            modal.classList.add('open', 'active');
+        });
     }
 }
 
-function cerrarModalConfiguracion() {
+export const openConfigModal = abrirModalConfiguracion;
+
+export function cerrarModalConfiguracion() {
     const modal = document.getElementById('modal-configuracion-sistema');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+        modal.classList.remove('open', 'active');
+        modal.setAttribute('aria-hidden', 'true');
+        modal.style.display = 'none';
+    }
 }
 
 function actualizarDatosModalConfiguracion(user) {
+    if (!user) return;
     const nameEl = document.getElementById('config-user-name');
     const badgeEl = document.getElementById('config-user-badge');
-    if (nameEl && user) nameEl.textContent = `${user.nombre} (${user.email})`;
-    if (badgeEl && user) {
+    if (nameEl) nameEl.textContent = `${user.nombre} (${user.email})`;
+    if (badgeEl) {
         if (user.rol === 'ADMIN') {
             badgeEl.innerHTML = `<span class="badge" style="background: var(--text-primary); color: var(--bg-surface); font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px;">ADMIN</span>`;
         } else {
             badgeEl.innerHTML = `<span class="badge" style="background: var(--bg-surface); color: var(--text-secondary); border: 1px solid var(--border-color); font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px;">OPERADOR</span>`;
         }
+    }
+}
+
+export const authService = {
+    obtenerUsuarioActual,
+    esAdmin,
+    iniciarSesion,
+    cerrarSesion,
+    verificarSesion,
+    aplicarPermisosDOM,
+    actualizarSidebarUsuario,
+    inyectarModalConfiguracion,
+    abrirModalConfiguracion,
+    openConfigModal,
+    cerrarModalConfiguracion
+};
+
+if (typeof document !== 'undefined') {
+    const bindSidebarGear = () => {
+        if (document.querySelector('.sidebar-action-btn, #btn-config-sistema, #btn-sidebar-config')) {
+            inyectarModalConfiguracion();
+        }
+    };
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bindSidebarGear);
+    } else {
+        bindSidebarGear();
     }
 }

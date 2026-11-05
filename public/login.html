@@ -296,6 +296,65 @@
             color: var(--text-muted);
             margin-top: 20px;
         }
+
+        .auth-mode-tabs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+            background: var(--bg-muted);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 4px;
+            margin-bottom: 22px;
+        }
+
+        .auth-mode-tab {
+            height: 34px;
+            border: none;
+            border-radius: 7px;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 0.8125rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.15s ease;
+        }
+
+        .auth-mode-tab.active {
+            background: var(--bg-surface);
+            color: var(--text-primary);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+
+        .auth-switch-prompt {
+            margin-top: 16px;
+            text-align: center;
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+        }
+
+        .auth-switch-link {
+            background: none;
+            border: none;
+            padding: 0;
+            margin-left: 4px;
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 0.8125rem;
+            font-family: inherit;
+            cursor: pointer;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+
+        .auth-switch-link:hover {
+            opacity: 0.8;
+        }
     </style>
 </head>
 
@@ -330,67 +389,143 @@
                 <div class="brand-subtitle">Control Patrimonial & Auditoría Física</div>
             </div>
 
-            <!-- Formulario de Acceso -->
-            <form id="form-login" novalidate>
+            <!-- Selector de Modo (Login / Auto-Registro) -->
+            <div class="auth-mode-tabs" role="tablist" aria-label="Modo de autenticación">
+                <button type="button" id="tab-mode-login" class="auth-mode-tab active" role="tab" aria-selected="true">
+                    <i class="fa-solid fa-arrow-right-to-bracket"></i>
+                    <span>Iniciar Sesión</span>
+                </button>
+                <button type="button" id="tab-mode-register" class="auth-mode-tab" role="tab" aria-selected="false">
+                    <i class="fa-solid fa-user-plus"></i>
+                    <span>Registrarse</span>
+                </button>
+            </div>
 
-                <div class="form-group">
-                    <label for="login-email" class="form-label">Correo Electrónico Institucional</label>
-                    <div class="input-icon-wrapper">
-                        <i class="fa-solid fa-envelope lead-icon"></i>
-                        <input type="email" id="login-email" name="email" placeholder="admin@lab.local" required
-                            autocomplete="email" autofocus>
+            <!-- Vista 1: Formulario de Acceso -->
+            <div id="view-login-panel">
+                <form id="form-login" novalidate>
+
+                    <div class="form-group">
+                        <label for="login-email" class="form-label">Correo Electrónico Institucional</label>
+                        <div class="input-icon-wrapper">
+                            <i class="fa-solid fa-envelope lead-icon"></i>
+                            <input type="email" id="login-email" name="email" placeholder="admin@lab.local" required
+                                autocomplete="email" autofocus>
+                        </div>
                     </div>
+
+                    <div class="form-group">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <label for="login-password" class="form-label" style="margin-bottom: 0;">Contraseña de
+                                Seguridad</label>
+                        </div>
+                        <div class="input-icon-wrapper">
+                            <i class="fa-solid fa-lock lead-icon"></i>
+                            <input type="password" id="login-password" name="password" placeholder="••••••••" required
+                                autocomplete="current-password">
+                            <button type="button" id="btn-toggle-password" class="toggle-password-btn"
+                                aria-label="Mostrar u ocultar contraseña">
+                                <i class="fa-solid fa-eye" id="icon-toggle-password"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="btn-submit-login" class="btn btn-primary"
+                        style="width: 100%; height: 42px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; cursor: pointer;">
+                        <i class="fa-solid fa-arrow-right-to-bracket" id="icon-submit-login"></i>
+                        <span id="text-submit-login">Ingresar al Sistema</span>
+                    </button>
+
+                </form>
+
+                <div class="auth-switch-prompt">
+                    ¿No tienes cuenta?
+                    <button type="button" id="link-go-register" class="auth-switch-link">Regístrate aquí</button>
                 </div>
 
-                <div class="form-group">
-                    <div
-                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                        <label for="login-password" class="form-label" style="margin-bottom: 0;">Contraseña de
-                            Seguridad</label>
+                <!-- Bloque de Credenciales de Demostración para Defensa de Tesis -->
+                <div class="demo-credentials-box">
+                    <div class="demo-header">
+                        <span class="demo-title">
+                            <i class="fa-solid fa-flask"></i> Cuentas de Evaluación
+                        </span>
+                        <span class="demo-badge-thesis">Defensa de Grado</span>
                     </div>
-                    <div class="input-icon-wrapper">
-                        <i class="fa-solid fa-lock lead-icon"></i>
-                        <input type="password" id="login-password" name="password" placeholder="••••••••" required
-                            autocomplete="current-password">
-                        <button type="button" id="btn-toggle-password" class="toggle-password-btn"
-                            aria-label="Mostrar u ocultar contraseña">
-                            <i class="fa-solid fa-eye" id="icon-toggle-password"></i>
+                    <div class="demo-grid">
+                        <button type="button" id="demo-btn-admin" class="demo-card admin"
+                            title="Click para autocompletar credenciales de Administrador">
+                            <span class="demo-role-badge">ADMIN</span>
+                            <span class="demo-user-name">Coordinador</span>
+                            <span class="demo-desc">Control total & Backups</span>
+                        </button>
+                        <button type="button" id="demo-btn-operador" class="demo-card operador"
+                            title="Click para autocompletar credenciales de Operador">
+                            <span class="demo-role-badge">OPERADOR</span>
+                            <span class="demo-user-name">Custodio</span>
+                            <span class="demo-desc">Inventario & Ubicaciones</span>
                         </button>
                     </div>
+                    <div style="font-size: 0.6875rem; color: var(--text-muted); margin-top: 8px; text-align: center;">
+                        Haga clic en un perfil para autocompletar los campos de acceso.
+                    </div>
                 </div>
+            </div>
 
-                <button type="submit" id="btn-submit-login" class="btn btn-primary"
-                    style="width: 100%; height: 42px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; cursor: pointer;">
-                    <i class="fa-solid fa-arrow-right-to-bracket" id="icon-submit-login"></i>
-                    <span id="text-submit-login">Ingresar al Sistema</span>
-                </button>
+            <!-- Vista 2: Formulario de Auto-Registro de Operadores -->
+            <div id="view-register-panel" style="display: none;">
+                <form id="form-register" novalidate>
 
-            </form>
+                    <div class="form-group">
+                        <label for="register-nombre" class="form-label">Nombre Completo</label>
+                        <div class="input-icon-wrapper">
+                            <i class="fa-solid fa-user lead-icon"></i>
+                            <input type="text" id="register-nombre" name="nombre" placeholder="Ej. Ing. Carlos Mendoza"
+                                required autocomplete="name">
+                        </div>
+                    </div>
 
-            <!-- Bloque de Credenciales de Demostración para Defensa de Tesis -->
-            <div class="demo-credentials-box">
-                <div class="demo-header">
-                    <span class="demo-title">
-                        <i class="fa-solid fa-flask"></i> Cuentas de Evaluación
-                    </span>
-                    <span class="demo-badge-thesis">Defensa de Grado</span>
-                </div>
-                <div class="demo-grid">
-                    <button type="button" id="demo-btn-admin" class="demo-card admin"
-                        title="Click para autocompletar credenciales de Administrador">
-                        <span class="demo-role-badge">ADMIN</span>
-                        <span class="demo-user-name">Coordinador</span>
-                        <span class="demo-desc">Control total & Backups</span>
+                    <div class="form-group">
+                        <label for="register-email" class="form-label">Correo Electrónico Institucional</label>
+                        <div class="input-icon-wrapper">
+                            <i class="fa-solid fa-envelope lead-icon"></i>
+                            <input type="email" id="register-email" name="email" placeholder="cmendoza@lab.local"
+                                required autocomplete="email">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <label for="register-password" class="form-label" style="margin-bottom: 0;">Contraseña</label>
+                            <span style="font-size: 0.72rem; color: var(--text-muted);">Mínimo 6 caracteres</span>
+                        </div>
+                        <div class="input-icon-wrapper">
+                            <i class="fa-solid fa-lock lead-icon"></i>
+                            <input type="password" id="register-password" name="password" placeholder="••••••••"
+                                minlength="6" required autocomplete="new-password">
+                            <button type="button" id="btn-toggle-register-password" class="toggle-password-btn"
+                                aria-label="Mostrar u ocultar contraseña">
+                                <i class="fa-solid fa-eye" id="icon-toggle-register-password"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="background: var(--bg-muted); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 12px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; font-size: 0.75rem; color: var(--text-secondary);">
+                        <i class="fa-solid fa-user-gear" style="color: var(--text-primary); font-size: 14px;"></i>
+                        <span>Tu cuenta se creará con rol <strong>OPERADOR</strong> activo por defecto.</span>
+                    </div>
+
+                    <button type="submit" id="btn-submit-register" class="btn btn-primary"
+                        style="width: 100%; height: 42px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;">
+                        <i class="fa-solid fa-user-plus" id="icon-submit-register"></i>
+                        <span id="text-submit-register">Crear Cuenta de Operador</span>
                     </button>
-                    <button type="button" id="demo-btn-operador" class="demo-card operador"
-                        title="Click para autocompletar credenciales de Operador">
-                        <span class="demo-role-badge">OPERADOR</span>
-                        <span class="demo-user-name">Custodio</span>
-                        <span class="demo-desc">Inventario & Ubicaciones</span>
-                    </button>
-                </div>
-                <div style="font-size: 0.6875rem; color: var(--text-muted); margin-top: 8px; text-align: center;">
-                    Haga clic en un perfil para autocompletar los campos de acceso.
+
+                </form>
+
+                <div class="auth-switch-prompt">
+                    ¿Ya tienes cuenta?
+                    <button type="button" id="link-go-login" class="auth-switch-link">Inicia sesión</button>
                 </div>
             </div>
 

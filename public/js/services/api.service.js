@@ -399,3 +399,116 @@ export async function eliminarPuesto(puestoId) {
         throw error;
     }
 }
+
+/**
+ * Registra un nuevo usuario mediante auto-registro público (rol por defecto: OPERADOR)
+ */
+export async function registrarUsuario(datos) {
+    try {
+        const response = await fetch('../api/routes/auth.php?action=register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(datos),
+            credentials: 'include'
+        });
+
+        const json = await response.json().catch(() => null);
+        if (!response.ok || !json?.success) {
+            const err = new Error(json?.message || `Error HTTP ${response.status} al registrar usuario.`);
+            err.status = response.status;
+            throw err;
+        }
+        return json;
+    } catch (error) {
+        console.error('Error en registrarUsuario:', error);
+        throw error;
+    }
+}
+
+/**
+ * Obtiene la lista de usuarios registrados (Exclusivo ADMIN)
+ */
+export async function obtenerUsuarios() {
+    try {
+        const response = await fetch('../api/routes/usuarios.php?action=listar', {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+            credentials: 'include'
+        });
+
+        const json = await response.json().catch(() => null);
+        if (!response.ok || !json?.success) {
+            const err = new Error(json?.message || `Error HTTP ${response.status} al obtener usuarios.`);
+            err.status = response.status;
+            throw err;
+        }
+        return json;
+    } catch (error) {
+        console.error('Error en obtenerUsuarios:', error);
+        throw error;
+    }
+}
+
+/**
+ * Cambia el rol jerárquico de un usuario entre ADMIN y OPERADOR (Exclusivo ADMIN)
+ */
+export async function cambiarRolUsuario(idUsuario, nuevoRol) {
+    try {
+        const response = await fetch('../api/routes/usuarios.php?action=cambiar-rol', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                id_usuario: parseInt(idUsuario, 10),
+                nuevo_rol: nuevoRol
+            }),
+            credentials: 'include'
+        });
+
+        const json = await response.json().catch(() => null);
+        if (!response.ok || !json?.success) {
+            const err = new Error(json?.message || `Error HTTP ${response.status} al cambiar el rol.`);
+            err.status = response.status;
+            throw err;
+        }
+        return json;
+    } catch (error) {
+        console.error('Error en cambiarRolUsuario:', error);
+        throw error;
+    }
+}
+
+/**
+ * Elimina o desactiva un usuario del sistema (Exclusivo ADMIN)
+ */
+export async function eliminarUsuario(idUsuario) {
+    try {
+        const response = await fetch('../api/routes/usuarios.php?action=eliminar', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                id_usuario: parseInt(idUsuario, 10)
+            }),
+            credentials: 'include'
+        });
+
+        const json = await response.json().catch(() => null);
+        if (!response.ok || !json?.success) {
+            const err = new Error(json?.message || `Error HTTP ${response.status} al eliminar el usuario.`);
+            err.status = response.status;
+            throw err;
+        }
+        return json;
+    } catch (error) {
+        console.error('Error en eliminarUsuario:', error);
+        throw error;
+    }
+}

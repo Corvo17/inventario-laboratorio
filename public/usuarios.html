@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Personal & Roles de Acceso - LabInventario</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="assets/icons/logo.png">
+    <link rel="apple-touch-icon" href="assets/icons/logo.png">
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = savedTheme ? savedTheme : (prefersDark ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <!-- Sidebar de Navegación Estandarizado -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="brand-logo-box">
+                <img src="assets/icons/logo.png" alt="Logo LabInventario" class="brand-logo-img"
+                    onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';">
+                <i class="fa-solid fa-server" style="display: none; color: var(--text-primary); font-size: 14px;"></i>
+            </div>
+            <div class="brand-text-group">
+                <span class="brand-name">LabInventario</span>
+                <span class="brand-sub">Control de Sistemas</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <div class="nav-section">
+                <span class="nav-section-title">Panel General</span>
+                <a href="index.html" class="nav-link" id="nav-dashboard">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>Dashboard</span>
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <span class="nav-section-title">Gestión de Activos</span>
+                <a href="inventario.html" class="nav-link" id="nav-inventario">
+                    <i class="fa-solid fa-desktop"></i>
+                    <span>Equipos & Activos</span>
+                </a>
+                <a href="ubicaciones.html" class="nav-link" id="nav-ubicaciones">
+                    <i class="fa-solid fa-location-dot"></i>
+                    <span>Ubicaciones & Puestos</span>
+                </a>
+                <a href="usuarios.html" class="nav-item active" data-role="ADMIN" id="nav-usuarios">
+                    <i class="fa-solid fa-users-gear"></i>
+                    <span>Gestión de Usuarios</span>
+                </a>
+            </div>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="user-card-wrapper">
+                <div class="user-avatar-status">
+                    <div class="user-avatar-badge">ADM</div>
+                    <span class="status-dot-online" title="Conectado"></span>
+                </div>
+                <div class="user-meta sidebar-user-info">
+                    <span class="user-name sidebar-user-name">Administrador</span>
+                    <span class="user-role">Superuser Lab</span>
+                </div>
+                <button type="button" id="btn-config-sistema" class="sidebar-action-btn" title="Configuración de Sistema" aria-label="Ajustes">
+                    <i class="fa-solid fa-gear"></i>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Contenedor Maestro -->
+    <div class="main-wrapper">
+        <!-- Topbar Estandarizada -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <span class="breadcrumb-root">Laboratorio</span>
+                <i class="fa-solid fa-chevron-right breadcrumb-separator"></i>
+                <span class="breadcrumb-current">Gestión de Usuarios</span>
+            </div>
+            <div class="topbar-right">
+                <button id="cmd-palette-trigger" class="topbar-search-trigger" title="Buscar en todo el sistema (Ctrl + K)">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <span class="search-placeholder-text">Buscar activos, salas, comandos...</span>
+                    <kbd class="kbd-shortcut">Ctrl K</kbd>
+                </button>
+                <button id="theme-toggle-btn" class="topbar-icon-btn" title="Cambiar tema de color" aria-label="Cambiar tema">
+                    <i class="fa-solid fa-sun"></i>
+                </button>
+            </div>
+        </header>
+
+        <main class="content-area main-content">
+            <!-- Encabezado de Página Estandarizado -->
+            <div class="page-header">
+                <div class="page-header-content">
+                    <h1>Gestión de Personal & Roles de Acceso</h1>
+                    <p>Administración de credenciales, privilegios del sistema y auditoría de operadores.</p>
+                </div>
+                <div class="page-header-actions">
+                    <button id="btn-refrescar-usuarios" class="btn btn-outline" title="Sincronizar listado de usuarios">
+                        <i class="fa-solid fa-rotate"></i>
+                        <span>Actualizar</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tarjetas KPI Superiores (3 Columnas) -->
+            <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+                <!-- KPI 1: Total de Usuarios -->
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Total de Usuarios</span>
+                        <div class="stat-icon" style="background: rgba(24, 24, 27, 0.08); color: var(--text-primary);">
+                            <i class="fa-solid fa-users"></i>
+                        </div>
+                    </div>
+                    <div id="kpi-total-usuarios" class="stat-value">--</div>
+                    <span class="stat-desc">Cuentas activas registradas en el sistema</span>
+                </div>
+
+                <!-- KPI 2: Administradores -->
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Administradores</span>
+                        <div class="stat-icon" style="background: rgba(16, 185, 129, 0.12); color: #10b981;">
+                            <i class="fa-solid fa-user-shield"></i>
+                        </div>
+                    </div>
+                    <div id="kpi-total-admins" class="stat-value" style="color: #10b981;">--</div>
+                    <span class="stat-desc">Coordinadores con control total y auditoría</span>
+                </div>
+
+                <!-- KPI 3: Operadores -->
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Operadores</span>
+                        <div class="stat-icon" style="background: rgba(59, 130, 246, 0.12); color: #3b82f6;">
+                            <i class="fa-solid fa-user-gear"></i>
+                        </div>
+                    </div>
+                    <div id="kpi-total-operadores" class="stat-value" style="color: #3b82f6;">--</div>
+                    <span class="stat-desc">Custodios técnicos de inventario y salas</span>
+                </div>
+            </div>
+
+            <!-- Barra de Filtros -->
+            <div class="filters-bar">
+                <div class="search-input-wrapper">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="input-busqueda-usuarios" class="input-text" placeholder="Buscar por nombre o correo electrónico...">
+                </div>
+                <select id="filtro-rol-usuarios" class="select-input">
+                    <option value="">Todos los Roles</option>
+                    <option value="ADMIN">Administrador (ADMIN)</option>
+                    <option value="OPERADOR">Operador (OPERADOR)</option>
+                </select>
+            </div>
+
+            <!-- Tabla de Usuarios -->
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Usuario / Nombre</th>
+                            <th>Correo Electrónico</th>
+                            <th style="width: 170px;">Rol Actual</th>
+                            <th style="width: 190px;">Fecha de Registro</th>
+                            <th style="width: 160px; text-align: right;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-usuarios">
+                        <!-- Renderizado dinámico desde usuarios.js -->
+                    </tbody>
+                </table>
+                <div id="table-footer-usuarios" class="table-footer">
+                    <span id="counter-usuarios">Cargando usuarios...</span>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal de Confirmación para Eliminar / Desactivar Usuario -->
+    <div id="modal-confirmar-eliminar-usuario" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-eliminar-usuario-title" aria-hidden="true" style="display: none;">
+        <div class="modal-card" style="max-width: 440px;">
+            <div class="modal-header">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div style="width: 34px; height: 34px; border-radius: 8px; background: rgba(239, 68, 68, 0.12); color: #ef4444; display: flex; align-items: center; justify-content: center;">
+                        <i class="fa-solid fa-trash-can" style="font-size: 15px;"></i>
+                    </div>
+                    <div>
+                        <h3 id="modal-eliminar-usuario-title" class="modal-title" style="margin: 0; font-size: 1rem;">Confirmar Eliminación de Usuario</h3>
+                        <p class="modal-description" style="margin: 0; font-size: 0.75rem; color: var(--text-muted);">Esta acción revocará el acceso al sistema de inmediato</p>
+                    </div>
+                </div>
+                <button type="button" id="btn-cerrar-modal-eliminar-usuario" class="btn-icon modal-close modal-close-btn" data-modal-close aria-label="Cerrar modal">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-body" style="padding: 1.25rem 1.5rem; gap: 0.75rem;">
+                <input type="hidden" id="eliminar-usuario-id" value="">
+                <p style="font-size: 0.875rem; color: var(--text-secondary); line-height: 1.5; margin: 0;">
+                    ¿Está seguro de que desea eliminar al usuario <strong id="eliminar-usuario-nombre" style="color: var(--text-primary);">--</strong> (<span id="eliminar-usuario-email" style="font-family: var(--font-mono); font-size: 0.8125rem;">--</span>)?
+                </p>
+                <div style="background: var(--bg-muted); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 12px; font-size: 0.78125rem; color: var(--text-muted); display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-triangle-exclamation" style="color: #f59e0b;"></i>
+                    <span>El usuario perderá sus credenciales y privilegios de acceso al sistema.</span>
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 0.5rem; padding: 1rem 1.5rem; border-top: 1px solid var(--border-color);">
+                <button type="button" id="btn-cancelar-eliminar-usuario" class="btn btn-outline" data-modal-close>Cancelar</button>
+                <button type="button" id="btn-confirmar-eliminar-usuario" class="btn btn-danger" style="background: #ef4444; color: #ffffff; border-color: #ef4444;">
+                    <i class="fa-solid fa-trash-can"></i>
+                    <span>Sí, Eliminar Usuario</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container" class="toast-container"></div>
+    <script type="module" src="js/views/usuarios.js"></script>
+</body>
+</html>
+

@@ -71,7 +71,7 @@ class AuthController {
         // Actualizar último acceso en la base de datos
         Usuario::updateUltimoAcceso((int)$user['id']);
 
-        // Persistir datos en $_SESSION
+        // Persistir datos en $_SESSION (sincronizado en 'user' y 'usuario')
         $sessionData = [
             'id'     => (int)$user['id'],
             'nombre' => $user['nombre'],
@@ -79,12 +79,103 @@ class AuthController {
             'rol'    => $user['rol']
         ];
         $_SESSION['user'] = $sessionData;
+        $_SESSION['usuario'] = $sessionData;
 
         Database::sendJson([
             'success' => true,
             'message' => 'Autenticación exitosa. Bienvenido al sistema.',
             'data'    => $sessionData
         ], 200);
+    }
+
+    /**
+     * POST ?action=register
+     * Auto-registro público de nuevos usuarios con rol por defecto OPERADOR y activo = 1
+     */
+    public static function register(): void {
+        self::ensureSession();
+
+        $input = file_get_contents('php://input');
+        $data = json_decode($input, true);
+
+        if (!is_array($data)) {
+            $data = $_POST;
+        }
+
+        $nombre   = trim($data['nombre'] ?? '');
+        $email    = strtolower(trim($data['email'] ?? ''));
+        $password = (string)($data['password'] ?? '');
+
+        if ($nombre === '' || $email === '' || trim($password) === '') {
+            Database::sendJson([
+                'success' => false,
+                'message' => 'Todos los campos (nombre completo, correo electrónico y contraseña) son obligatorios.'
+            ], 400);
+            return;
+        }
+
+        if (mb_strlen($nombre) < 3 || mb_strlen($nombre) > 100) {
+            Database::sendJson([
+                'success' => false,
+                'message' => 'El nombre completo debe tener entre 3 y 100 caracteres.'
+            ], 400);
+            return;
+        }
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 150) {
+            Database::sendJson([
+                'success' => false,
+                'message' => 'El formato del correo electrónico institucional no es válido.'
+            ], 400);
+            return;
+        }
+
+        if (strlen($password) < 6) {
+            Database::sendJson([
+                'success' => false,
+                'message' => 'La contraseña debe tener al menos 6 caracteres.'
+            ], 400);
+            return;
+        }
+
+        try {
+            $existing = Usuario::findByEmail($email);
+            if ($existing) {
+                Database::sendJson([
+                    'success' => false,
+                    'message' => 'El correo electrónico ingresado ya se encuentra registrado en el sistema.'
+                ], 409);
+                return;
+            }
+
+            $passwordHash = password_hash($password, PASSWORD_BCRYPT);
+            $newId = Usuario::create($nombre, $email, $passwordHash, 'OPERADOR');
+            $createdUser = Usuario::findById($newId);
+
+            Database::sendJson([
+                'success' => true,
+                'message' => 'Cuenta registrada exitosamente como Operador. Ya puedes iniciar sesión.',
+                'data'    => $createdUser ?? [
+                    'id'     => $newId,
+                    'nombre' => $nombre,
+                    'email'  => $email,
+                    'rol'    => 'OPERADOR',
+                    'activo' => 1
+                ]
+            ], 201);
+        } catch (PDOException $e) {
+            if ((string)$e->getCode() === '23000') {
+                Database::sendJson([
+                    'success' => false,
+                    'message' => 'El correo electrónico ingresado ya se encuentra registrado en el sistema.'
+                ], 409);
+                return;
+            }
+            Database::sendJson([
+                'success' => false,
+                'message' => 'Error al registrar el usuario en la base de datos.'
+            ], 500);
+        }
     }
 
     /**
@@ -120,10 +211,13 @@ class AuthController {
      */
     public static function check(): void {
         self::ensureSession();
-        if (isset($_SESSION['user']) && !empty($_SESSION['user']['id'])) {
+        $sessionUser = $_SESSION['usuario'] ?? $_SESSION['user'] ?? null;
+        if (is_array($sessionUser) && !empty($sessionUser['id'])) {
+            $_SESSION['user'] = $sessionUser;
+            $_SESSION['usuario'] = $sessionUser;
             Database::sendJson([
                 'success' => true,
-                'data'    => $_SESSION['user']
+                'data'    => $sessionUser
             ], 200);
         } else {
             Database::sendJson([
@@ -138,7 +232,13 @@ class AuthController {
      */
     public static function getAuthenticatedUser(): ?array {
         self::ensureSession();
-        return $_SESSION['user'] ?? null;
+        $sessionUser = $_SESSION['usuario'] ?? $_SESSION['user'] ?? null;
+        if (is_array($sessionUser) && !empty($sessionUser['id'])) {
+            $_SESSION['user'] = $sessionUser;
+            $_SESSION['usuario'] = $sessionUser;
+            return $sessionUser;
+        }
+        return null;
     }
 
     /**

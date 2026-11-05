@@ -19,6 +19,8 @@ $action = $_GET['action'] ?? '';
 if ($method === 'POST') {
     if ($action === 'login') {
         AuthController::login();
+    } elseif ($action === 'register') {
+        AuthController::register();
     } elseif ($action === 'logout') {
         AuthController::logout();
     } else {
