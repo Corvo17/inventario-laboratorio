@@ -114,10 +114,10 @@ class AuthController {
             return;
         }
 
-        if (mb_strlen($nombre) < 3 || mb_strlen($nombre) > 100) {
+        if (mb_strlen($nombre) < 3 || mb_strlen($nombre) > 100 || !preg_match('/^[\p{L}\s.\'-]{3,100}$/u', $nombre) || preg_match('/[<>"\';\\\\`{}]/', $nombre)) {
             Database::sendJson([
                 'success' => false,
-                'message' => 'El nombre completo debe tener entre 3 y 100 caracteres.'
+                'message' => 'El nombre completo debe tener al menos 3 caracteres válidos y no contener caracteres especiales ni de inyección.'
             ], 400);
             return;
         }
@@ -130,10 +130,10 @@ class AuthController {
             return;
         }
 
-        if (strlen($password) < 6) {
+        if (!preg_match('/^(?=.*[A-Za-z])(?=.*\d).{8,}$/', $password)) {
             Database::sendJson([
                 'success' => false,
-                'message' => 'La contraseña debe tener al menos 6 caracteres.'
+                'message' => 'La contraseña debe contener al menos 8 caracteres, incluyendo letras y números.'
             ], 400);
             return;
         }

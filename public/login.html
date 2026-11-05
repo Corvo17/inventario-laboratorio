@@ -26,7 +26,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- FontAwesome 6 Icons -->
+    <!-- FontAwesome 6 Icons (v6.5.1) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <!-- Design Tokens & Component Styles -->
@@ -61,23 +61,24 @@
 
         .login-wrapper {
             width: 100%;
-            max-width: 440px;
+            max-width: 450px;
             padding: 20px;
             box-sizing: border-box;
         }
 
-        .login-card {
+        .login-card,
+        .card-auth {
             background: var(--bg-surface);
             border: 1px solid var(--border-color);
             border-radius: 14px;
-            padding: 32px 28px;
+            padding: 30px 28px;
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
             transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
 
         .login-brand-header {
             text-align: center;
-            margin-bottom: 26px;
+            margin-bottom: 22px;
         }
 
         .brand-icon-wrapper,
@@ -89,13 +90,13 @@
             border-radius: 14px;
             background: var(--bg-surface);
             border: 1px solid var(--border-color);
-            margin-bottom: 14px;
+            margin-bottom: 12px;
             box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
             transition: all 0.2s ease;
         }
 
         .login-brand-logo {
-            max-height: 48px;
+            max-height: 46px;
             width: auto;
             object-fit: contain;
             display: block;
@@ -123,12 +124,104 @@
         .brand-subtitle {
             font-size: 0.8125rem;
             color: var(--text-muted);
-            margin-top: 6px;
+            margin-top: 4px;
             font-weight: 500;
         }
 
+        /* Pestañas Shadcn Zinc */
+        .auth-mode-tabs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+            background: var(--bg-muted);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 4px;
+            margin-bottom: 20px;
+        }
+
+        .auth-mode-tab {
+            height: 36px;
+            border: none;
+            border-bottom: 2px solid transparent;
+            border-radius: 7px;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 0.8125rem;
+            font-weight: 500;
+            font-family: inherit;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+
+        .auth-mode-tab:hover:not(.active) {
+            color: var(--text-primary);
+            background: rgba(113, 113, 122, 0.08);
+        }
+
+        .auth-mode-tab.active {
+            background: var(--bg-surface);
+            color: var(--text-primary);
+            font-weight: 600;
+            border-bottom-color: var(--text-primary);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+
+        /* Viewport de Paneles con Transición Suave */
+        .auth-panels-viewport {
+            position: relative;
+            min-height: 245px;
+            transition: min-height 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .auth-panel {
+            animation: authPanelFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes authPanelFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(4px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Alerta Inline de Estado / Error */
+        .auth-inline-alert {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 0.78125rem;
+            font-weight: 500;
+            margin-bottom: 16px;
+            line-height: 1.4;
+        }
+
+        .auth-inline-alert.error {
+            display: flex;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+
+        .auth-inline-alert.success {
+            display: flex;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #10b981;
+        }
+
         .form-group {
-            margin-bottom: 18px;
+            margin-bottom: 15px;
         }
 
         .form-label {
@@ -151,6 +244,7 @@
             color: var(--text-muted);
             font-size: 14px;
             pointer-events: none;
+            transition: color 0.15s ease;
         }
 
         .input-icon-wrapper input {
@@ -173,166 +267,102 @@
             box-shadow: 0 0 0 2px var(--bg-surface), 0 0 0 4px var(--border-focus, #18181b);
         }
 
+        .input-icon-wrapper input.input-error {
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.15) !important;
+        }
+
+        .input-icon-wrapper input.input-valid {
+            border-color: #10b981;
+        }
+
+        .field-feedback {
+            display: none;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.72rem;
+            margin-top: 5px;
+            font-weight: 500;
+        }
+
+        .field-feedback.error {
+            display: flex;
+            color: #ef4444;
+        }
+
+        .field-feedback.valid {
+            display: flex;
+            color: #10b981;
+        }
+
+        /* Botón Ojo Mostrar/Ocultar Contraseña */
         .toggle-password-btn {
             position: absolute;
-            right: 12px;
+            right: 10px;
             background: transparent;
             border: none;
             color: var(--text-muted);
             cursor: pointer;
             padding: 6px;
             font-size: 14px;
-            border-radius: 4px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.15s ease, background-color 0.15s ease;
         }
 
         .toggle-password-btn:hover {
             color: var(--text-primary);
-        }
-
-        .demo-credentials-box {
             background: var(--bg-muted);
-            border: 1px dashed var(--border-color);
-            border-radius: 10px;
-            padding: 14px;
-            margin-top: 24px;
         }
 
-        .demo-header {
+        /* Indicador de Fortaleza de Contraseña (3 Segmentos) */
+        .password-strength-box {
+            margin-top: 8px;
+        }
+
+        .strength-bars {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            margin-bottom: 5px;
+        }
+
+        .strength-segment {
+            height: 4px;
+            border-radius: 9999px;
+            background: var(--border-color);
+            transition: background-color 0.2s ease;
+        }
+
+        .strength-segment.weak {
+            background-color: #ef4444;
+        }
+
+        .strength-segment.medium {
+            background-color: #f59e0b;
+        }
+
+        .strength-segment.strong {
+            background-color: #10b981;
+        }
+
+        .strength-meta {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 10px;
-        }
-
-        .demo-title {
-            font-size: 0.6875rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
+            font-size: 0.71875rem;
             color: var(--text-muted);
-            display: flex;
-            align-items: center;
-            gap: 6px;
         }
 
-        .demo-badge-thesis {
-            font-size: 0.625rem;
+        .strength-label {
             font-weight: 600;
-            background: rgba(16, 185, 129, 0.12);
-            color: #10b981;
-            padding: 2px 6px;
-            border-radius: 4px;
-            border: 1px solid rgba(16, 185, 129, 0.25);
-        }
-
-        .demo-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-        }
-
-        .demo-card {
-            background: var(--bg-surface);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 10px 12px;
-            cursor: pointer;
-            text-align: left;
-            transition: all 0.15s ease;
-            position: relative;
-        }
-
-        .demo-card:hover {
-            border-color: var(--text-primary);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px -2px rgba(0, 0, 0, 0.06);
-        }
-
-        .demo-card.active {
-            border-color: var(--text-primary);
-            box-shadow: 0 0 0 1.5px var(--text-primary);
-        }
-
-        .demo-role-badge {
-            display: inline-block;
-            font-size: 0.625rem;
-            font-weight: 700;
-            padding: 2px 6px;
-            border-radius: 4px;
-            margin-bottom: 4px;
-        }
-
-        .demo-card.admin .demo-role-badge {
-            background: var(--text-primary);
-            color: var(--bg-surface);
-        }
-
-        .demo-card.operador .demo-role-badge {
-            background: var(--bg-muted);
-            color: var(--text-secondary);
-            border: 1px solid var(--border-color);
-        }
-
-        .demo-user-name {
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            display: block;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .demo-desc {
-            font-size: 0.6875rem;
-            color: var(--text-muted);
-            display: block;
-            margin-top: 2px;
-        }
-
-        .login-footer-info {
-            text-align: center;
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            margin-top: 20px;
-        }
-
-        .auth-mode-tabs {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 4px;
-            background: var(--bg-muted);
-            border: 1px solid var(--border-color);
-            border-radius: 10px;
-            padding: 4px;
-            margin-bottom: 22px;
-        }
-
-        .auth-mode-tab {
-            height: 34px;
-            border: none;
-            border-radius: 7px;
-            background: transparent;
-            color: var(--text-secondary);
-            font-size: 0.8125rem;
-            font-weight: 600;
-            font-family: inherit;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            transition: all 0.15s ease;
-        }
-
-        .auth-mode-tab.active {
-            background: var(--bg-surface);
-            color: var(--text-primary);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            transition: color 0.2s ease;
         }
 
         .auth-switch-prompt {
-            margin-top: 16px;
+            margin-top: 14px;
             text-align: center;
             font-size: 0.8125rem;
             color: var(--text-muted);
@@ -355,6 +385,15 @@
         .auth-switch-link:hover {
             opacity: 0.8;
         }
+
+        .login-footer-info {
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 22px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+        }
     </style>
 </head>
 
@@ -362,16 +401,16 @@
 
     <!-- Control de Tema Flotante -->
     <div class="login-topbar">
-        <button id="theme-toggle" class="btn-icon" aria-label="Cambiar tema de color"
+        <button id="theme-toggle" type="button" class="btn-icon" aria-label="Cambiar tema de color"
             title="Alternar Modo Claro / Oscuro"
             style="width: 38px; height: 38px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-surface); cursor: pointer; color: var(--text-secondary); display: flex; align-items: center; justify-content: center;">
             <i class="fa-solid fa-moon"></i>
         </button>
     </div>
 
-    <!-- Contenedor Principal de Login -->
+    <!-- Contenedor Principal de Login / Registro -->
     <div class="login-wrapper">
-        <div class="login-card">
+        <div class="login-card card-auth" id="card-auth">
 
             <!-- Branding Institucional -->
             <div class="login-brand-header">
@@ -383,150 +422,162 @@
                         <i class="fa-solid fa-server"></i>
                     </div>
                 </div>
-                <h1 class="brand-title">
-                    LabInventario
-                </h1>
+                <h1 class="brand-title">LabInventario</h1>
                 <div class="brand-subtitle">Control Patrimonial & Auditoría Física</div>
             </div>
 
-            <!-- Selector de Modo (Login / Auto-Registro) -->
-            <div class="auth-mode-tabs" role="tablist" aria-label="Modo de autenticación">
-                <button type="button" id="tab-mode-login" class="auth-mode-tab active" role="tab" aria-selected="true">
+            <!-- Pestañas Superiores Shadcn Zinc (Iniciar Sesión / Crear Cuenta) -->
+            <div class="auth-mode-tabs" role="tablist" aria-label="Modo de acceso">
+                <button type="button" id="tab-mode-login" data-tab="login" class="auth-mode-tab tab-login active" role="tab" aria-selected="true">
                     <i class="fa-solid fa-arrow-right-to-bracket"></i>
                     <span>Iniciar Sesión</span>
                 </button>
-                <button type="button" id="tab-mode-register" class="auth-mode-tab" role="tab" aria-selected="false">
+                <button type="button" id="tab-mode-register" data-tab="register" class="auth-mode-tab tab-register" role="tab" aria-selected="false">
                     <i class="fa-solid fa-user-plus"></i>
-                    <span>Registrarse</span>
+                    <span>Crear Cuenta</span>
                 </button>
             </div>
 
-            <!-- Vista 1: Formulario de Acceso -->
-            <div id="view-login-panel">
-                <form id="form-login" novalidate>
-
-                    <div class="form-group">
-                        <label for="login-email" class="form-label">Correo Electrónico Institucional</label>
-                        <div class="input-icon-wrapper">
-                            <i class="fa-solid fa-envelope lead-icon"></i>
-                            <input type="email" id="login-email" name="email" placeholder="admin@lab.local" required
-                                autocomplete="email" autofocus>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <div
-                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                            <label for="login-password" class="form-label" style="margin-bottom: 0;">Contraseña de
-                                Seguridad</label>
-                        </div>
-                        <div class="input-icon-wrapper">
-                            <i class="fa-solid fa-lock lead-icon"></i>
-                            <input type="password" id="login-password" name="password" placeholder="••••••••" required
-                                autocomplete="current-password">
-                            <button type="button" id="btn-toggle-password" class="toggle-password-btn"
-                                aria-label="Mostrar u ocultar contraseña">
-                                <i class="fa-solid fa-eye" id="icon-toggle-password"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <button type="submit" id="btn-submit-login" class="btn btn-primary"
-                        style="width: 100%; height: 42px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; cursor: pointer;">
-                        <i class="fa-solid fa-arrow-right-to-bracket" id="icon-submit-login"></i>
-                        <span id="text-submit-login">Ingresar al Sistema</span>
-                    </button>
-
-                </form>
-
-                <div class="auth-switch-prompt">
-                    ¿No tienes cuenta?
-                    <button type="button" id="link-go-register" class="auth-switch-link">Regístrate aquí</button>
-                </div>
-
-                <!-- Bloque de Credenciales de Demostración para Defensa de Tesis -->
-                <div class="demo-credentials-box">
-                    <div class="demo-header">
-                        <span class="demo-title">
-                            <i class="fa-solid fa-flask"></i> Cuentas de Evaluación
-                        </span>
-                        <span class="demo-badge-thesis">Defensa de Grado</span>
-                    </div>
-                    <div class="demo-grid">
-                        <button type="button" id="demo-btn-admin" class="demo-card admin"
-                            title="Click para autocompletar credenciales de Administrador">
-                            <span class="demo-role-badge">ADMIN</span>
-                            <span class="demo-user-name">Coordinador</span>
-                            <span class="demo-desc">Control total & Backups</span>
-                        </button>
-                        <button type="button" id="demo-btn-operador" class="demo-card operador"
-                            title="Click para autocompletar credenciales de Operador">
-                            <span class="demo-role-badge">OPERADOR</span>
-                            <span class="demo-user-name">Custodio</span>
-                            <span class="demo-desc">Inventario & Ubicaciones</span>
-                        </button>
-                    </div>
-                    <div style="font-size: 0.6875rem; color: var(--text-muted); margin-top: 8px; text-align: center;">
-                        Haga clic en un perfil para autocompletar los campos de acceso.
-                    </div>
-                </div>
+            <!-- Alerta Inline Dinámica -->
+            <div id="auth-inline-alert" class="auth-inline-alert" role="alert">
+                <i id="auth-inline-alert-icon" class="fa-solid fa-circle-exclamation"></i>
+                <span id="auth-inline-alert-text"></span>
             </div>
 
-            <!-- Vista 2: Formulario de Auto-Registro de Operadores -->
-            <div id="view-register-panel" style="display: none;">
-                <form id="form-register" novalidate>
+            <!-- Contenedor de Formularios con Transición Fluida -->
+            <div class="auth-panels-viewport">
 
-                    <div class="form-group">
-                        <label for="register-nombre" class="form-label">Nombre Completo</label>
-                        <div class="input-icon-wrapper">
-                            <i class="fa-solid fa-user lead-icon"></i>
-                            <input type="text" id="register-nombre" name="nombre" placeholder="Ej. Ing. Carlos Mendoza"
-                                required autocomplete="name">
+                <!-- Panel 1: Iniciar Sesión -->
+                <div id="view-login-panel" class="auth-panel">
+                    <form id="form-login" novalidate>
+
+                        <div class="form-group">
+                            <label for="login-email" class="form-label">Correo Electrónico Institucional</label>
+                            <div class="input-icon-wrapper">
+                                <i class="fa-solid fa-envelope lead-icon"></i>
+                                <input type="email" id="login-email" name="email" placeholder="admin@lab.local" required
+                                    autocomplete="email" autofocus>
+                            </div>
+                            <div id="feedback-login-email" class="field-feedback"></div>
                         </div>
-                    </div>
 
-                    <div class="form-group">
-                        <label for="register-email" class="form-label">Correo Electrónico Institucional</label>
-                        <div class="input-icon-wrapper">
-                            <i class="fa-solid fa-envelope lead-icon"></i>
-                            <input type="email" id="register-email" name="email" placeholder="cmendoza@lab.local"
-                                required autocomplete="email">
+                        <div class="form-group">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <label for="login-password" class="form-label" style="margin-bottom: 0;">Contraseña de Seguridad</label>
+                            </div>
+                            <div class="input-icon-wrapper">
+                                <i class="fa-solid fa-lock lead-icon"></i>
+                                <input type="password" id="login-password" name="password" placeholder="••••••••" required
+                                    autocomplete="current-password">
+                                <button type="button" id="btn-toggle-password" class="toggle-password-btn"
+                                    title="Mostrar u ocultar contraseña" aria-label="Mostrar u ocultar contraseña">
+                                    <i class="fa-solid fa-eye" id="icon-toggle-password"></i>
+                                </button>
+                            </div>
+                            <div id="feedback-login-password" class="field-feedback"></div>
                         </div>
+
+                        <button type="submit" id="btn-submit-login" class="btn btn-primary"
+                            style="width: 100%; height: 42px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; cursor: pointer;">
+                            <i class="fa-solid fa-arrow-right-to-bracket" id="icon-submit-login"></i>
+                            <span id="text-submit-login">Iniciar Sesión</span>
+                        </button>
+
+                    </form>
+
+                    <div class="auth-switch-prompt">
+                        ¿No tienes cuenta?
+                        <button type="button" id="link-go-register" class="auth-switch-link">Regístrate aquí</button>
                     </div>
-
-                    <div class="form-group">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                            <label for="register-password" class="form-label" style="margin-bottom: 0;">Contraseña</label>
-                            <span style="font-size: 0.72rem; color: var(--text-muted);">Mínimo 6 caracteres</span>
-                        </div>
-                        <div class="input-icon-wrapper">
-                            <i class="fa-solid fa-lock lead-icon"></i>
-                            <input type="password" id="register-password" name="password" placeholder="••••••••"
-                                minlength="6" required autocomplete="new-password">
-                            <button type="button" id="btn-toggle-register-password" class="toggle-password-btn"
-                                aria-label="Mostrar u ocultar contraseña">
-                                <i class="fa-solid fa-eye" id="icon-toggle-register-password"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div style="background: var(--bg-muted); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 12px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; font-size: 0.75rem; color: var(--text-secondary);">
-                        <i class="fa-solid fa-user-gear" style="color: var(--text-primary); font-size: 14px;"></i>
-                        <span>Tu cuenta se creará con rol <strong>OPERADOR</strong> activo por defecto.</span>
-                    </div>
-
-                    <button type="submit" id="btn-submit-register" class="btn btn-primary"
-                        style="width: 100%; height: 42px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;">
-                        <i class="fa-solid fa-user-plus" id="icon-submit-register"></i>
-                        <span id="text-submit-register">Crear Cuenta de Operador</span>
-                    </button>
-
-                </form>
-
-                <div class="auth-switch-prompt">
-                    ¿Ya tienes cuenta?
-                    <button type="button" id="link-go-login" class="auth-switch-link">Inicia sesión</button>
                 </div>
+
+                <!-- Panel 2: Crear Cuenta (Auto-Registro) -->
+                <div id="view-register-panel" class="auth-panel" style="display: none;">
+                    <form id="form-register" novalidate>
+
+                        <div class="form-group">
+                            <label for="register-nombre" class="form-label">Nombre Completo</label>
+                            <div class="input-icon-wrapper">
+                                <i class="fa-solid fa-user lead-icon"></i>
+                                <input type="text" id="register-nombre" name="nombre" placeholder="Ej. Ing. Carlos Mendoza"
+                                    required autocomplete="name">
+                            </div>
+                            <div id="feedback-register-nombre" class="field-feedback"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="register-email" class="form-label">Correo Electrónico Institucional</label>
+                            <div class="input-icon-wrapper">
+                                <i class="fa-solid fa-envelope lead-icon"></i>
+                                <input type="email" id="register-email" name="email" placeholder="cmendoza@lab.local"
+                                    required autocomplete="email">
+                            </div>
+                            <div id="feedback-register-email" class="field-feedback"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <label for="register-password" class="form-label" style="margin-bottom: 0;">Contraseña</label>
+                                <span style="font-size: 0.72rem; color: var(--text-muted);">Mín. 8 caracteres (letras y números)</span>
+                            </div>
+                            <div class="input-icon-wrapper">
+                                <i class="fa-solid fa-lock lead-icon"></i>
+                                <input type="password" id="register-password" name="password" placeholder="••••••••"
+                                    minlength="8" required autocomplete="new-password">
+                                <button type="button" id="btn-toggle-register-password" class="toggle-password-btn"
+                                    title="Mostrar u ocultar contraseña" aria-label="Mostrar u ocultar contraseña">
+                                    <i class="fa-solid fa-eye" id="icon-toggle-register-password"></i>
+                                </button>
+                            </div>
+
+                            <!-- Indicador de Fortaleza de Contraseña en Tiempo Real -->
+                            <div id="password-strength-container" class="password-strength-box">
+                                <div class="strength-bars">
+                                    <div id="strength-seg-1" class="strength-segment"></div>
+                                    <div id="strength-seg-2" class="strength-segment"></div>
+                                    <div id="strength-seg-3" class="strength-segment"></div>
+                                </div>
+                                <div class="strength-meta">
+                                    <span>Nivel de seguridad</span>
+                                    <span id="strength-label-text" class="strength-label">Sin evaluar</span>
+                                </div>
+                            </div>
+                            <div id="feedback-register-password" class="field-feedback"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="register-password-confirm" class="form-label">Confirmar Contraseña</label>
+                            <div class="input-icon-wrapper">
+                                <i class="fa-solid fa-lock lead-icon"></i>
+                                <input type="password" id="register-password-confirm" name="password_confirm" placeholder="Repita su contraseña"
+                                    minlength="8" required autocomplete="new-password">
+                                <button type="button" id="btn-toggle-register-confirm" class="toggle-password-btn"
+                                    title="Mostrar u ocultar confirmación" aria-label="Mostrar u ocultar confirmación">
+                                    <i class="fa-solid fa-eye" id="icon-toggle-register-confirm"></i>
+                                </button>
+                            </div>
+                            <div id="feedback-register-confirm" class="field-feedback"></div>
+                        </div>
+
+                        <div style="background: var(--bg-muted); border: 1px solid var(--border-color); border-radius: 8px; padding: 9px 12px; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; font-size: 0.75rem; color: var(--text-secondary);">
+                            <i class="fa-solid fa-user-gear" style="color: var(--text-primary); font-size: 14px;"></i>
+                            <span>Tu cuenta se creará con rol <strong>OPERADOR</strong> activo por defecto.</span>
+                        </div>
+
+                        <button type="submit" id="btn-submit-register" class="btn btn-primary"
+                            style="width: 100%; height: 42px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;">
+                            <i class="fa-solid fa-user-plus" id="icon-submit-register"></i>
+                            <span id="text-submit-register">Registrar Cuenta</span>
+                        </button>
+
+                    </form>
+
+                    <div class="auth-switch-prompt">
+                        ¿Ya tienes cuenta?
+                        <button type="button" id="link-go-login" class="auth-switch-link">Inicia sesión</button>
+                    </div>
+                </div>
+
             </div>
 
             <div class="login-footer-info">
