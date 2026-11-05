@@ -104,7 +104,7 @@ CREATE TABLE `usuarios` (
 -- Contraseña Operador: Operador123*
 INSERT INTO `usuarios` (`id`, `nombre`, `email`, `password`, `rol`, `activo`, `ultimo_acceso`, `created_at`) VALUES
 (1, 'Coordinador de Laboratorios', 'admin@lab.local', '$2y$10$BIZ5Vfjrl31E7tb2Y25mEeHumUPDdPXcCEtkxtnN1Fx6APApQlFl2', 'ADMIN', 1, NULL, CURRENT_TIMESTAMP),
-(2, 'Custodio Técnico', 'operador@lab.local', '$2y$10$Kk6dYp/f3V79g2pEsmzKku0N.v95hS5.k8tV11.bEw7bVbT/vM0Wy', 'OPERADOR', 1, NULL, CURRENT_TIMESTAMP);
+(2, 'Custodio Técnico', 'operador@lab.local', '$2y$10$GPWkguEhrXC5h5Lj9/uPc.bucNW5iU9YdrJTxVD.fiZPgw0zP1Qwq', 'OPERADOR', 1, NULL, CURRENT_TIMESTAMP);
 
 -- Salas Base
 INSERT INTO `salas` (`id`, `nombre`, `edificio`, `piso`, `descripcion`, `tipo`, `capacidad_puestos`, `created_at`) VALUES

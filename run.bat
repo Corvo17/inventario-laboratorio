@@ -13,7 +13,7 @@ if "!ERRORLEVEL!"=="0" (
     echo [*] MySQL no esta activo. Iniciando en segundo plano...
     if exist "C:\xampp\mysql\bin\mysqld.exe" (
         start "" "C:\xampp\mysql\bin\mysqld.exe" --defaults-file="C:\xampp\mysql\bin\my.ini" --standalone
-        timeout /t 2 /nobreak >nul
+        timeout /t 3 /nobreak >nul
         set "MYSQL_STATUS=Iniciado en segundo plano"
     ) else (
         set "MYSQL_STATUS=No encontrado en C:\xampp\mysql\bin\"
@@ -21,7 +21,25 @@ if "!ERRORLEVEL!"=="0" (
 )
 
 :: -----------------------------------------------------------------------------
-:: 2. Deteccion del Binario de PHP (PATH o C:\xampp\php\php.exe)
+:: 2. Verificacion e Inicializacion Automatica de la Base de Datos (lab_inventario)
+:: -----------------------------------------------------------------------------
+if exist "C:\xampp\mysql\bin\mysql.exe" (
+    "C:\xampp\mysql\bin\mysql.exe" -u root -e "SHOW DATABASES LIKE 'lab_inventario';" 2>NUL | find /I "lab_inventario" >NUL
+    if not "!ERRORLEVEL!"=="0" (
+        echo [*] Base de datos no detectada. Inicializando lab_inventario...
+        "C:\xampp\mysql\bin\mysql.exe" -u root -e "CREATE DATABASE IF NOT EXISTS lab_inventario CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+        "C:\xampp\mysql\bin\mysql.exe" -u root lab_inventario < "%~dp0database\schema_and_seed.sql"
+        if "!ERRORLEVEL!"=="0" (
+            echo [OK] Base de datos y datos iniciales creados exitosamente.
+            set "MYSQL_STATUS=!MYSQL_STATUS! (BD inicializada automaticamente)"
+        ) else (
+            echo [ERROR] Hubo un problema al importar database\schema_and_seed.sql.
+        )
+    )
+)
+
+:: -----------------------------------------------------------------------------
+:: 3. Deteccion del Binario de PHP (PATH o C:\xampp\php\php.exe)
 :: -----------------------------------------------------------------------------
 set "PHP_CMD="
 where php >nul 2>&1
@@ -64,9 +82,9 @@ if "!ERRORLEVEL!"=="0" (
 start "" cmd /c "timeout /t 2 /nobreak >nul & start http://localhost:8000/public/login.html"
 
 :: -----------------------------------------------------------------------------
-:: 5. Banner de Inicio y Feedback en Consola
+:: 6. Banner de Inicio y Feedback en Consola
 :: -----------------------------------------------------------------------------
-cls
+echo.
 echo =====================================================================
 echo               LABINVENTARIO - SISTEMA DE CONTROL PATRIMONIAL
 echo =====================================================================
