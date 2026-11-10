@@ -107,29 +107,64 @@ class Equipo {
             return null;
         }
 
-        $sqlHistorial = "
-            SELECT 
-                id,
-                fecha_reporte,
-                fecha_resolucion,
-                tipo,
-                prioridad,
-                titulo,
-                descripcion_falla,
-                tecnico_responsable,
-                estado_resultado,
-                diagnostico_tecnico,
-                acciones_realizadas
-            FROM mantenimientos
-            WHERE equipo_id = :equipo_id
-            ORDER BY id DESC
-        ";
+        try {
+            $sqlHistorial = "
+                SELECT 
+                    id,
+                    fecha_reporte,
+                    fecha_resolucion,
+                    tipo,
+                    prioridad,
+                    titulo,
+                    descripcion_falla,
+                    tecnico_responsable,
+                    estado_resultado,
+                    diagnostico_tecnico,
+                    acciones_realizadas
+                FROM mantenimientos
+                WHERE equipo_id = :equipo_id
+                ORDER BY id DESC
+            ";
 
-        $stmtHistorial = $db->prepare($sqlHistorial);
-        $stmtHistorial->execute([':equipo_id' => $id]);
-        $equipo['historial_mantenimiento'] = $stmtHistorial->fetchAll();
+            $stmtHistorial = $db->prepare($sqlHistorial);
+            $stmtHistorial->execute([':equipo_id' => $id]);
+            $equipo['historial_mantenimiento'] = $stmtHistorial->fetchAll();
+        } catch (Throwable $e) {
+            $equipo['historial_mantenimiento'] = [];
+        }
 
         return $equipo;
+    }
+
+    /**
+     * Normaliza la categoría o tipo de equipo al ENUM válido de la base de datos
+     */
+    private static function normalizeCategoria(array $data): string {
+        $validCategories = [
+            'PC_ESCRITORIO',
+            'ALL_IN_ONE',
+            'MONITOR',
+            'NETWORKING',
+            'PROYECTOR',
+            'PERIFERICO',
+            'COMPONENTE_INTERNO'
+        ];
+
+        $raw = strtoupper(trim((string)($data['categoria'] ?? $data['tipo'] ?? $data['nombre'] ?? 'PC_ESCRITORIO')));
+        $raw = str_replace([' ', '-'], '_', $raw);
+
+        if (in_array($raw, $validCategories, true)) {
+            return $raw;
+        }
+
+        if (strpos($raw, 'ALL') !== false || strpos($raw, 'AIO') !== false) return 'ALL_IN_ONE';
+        if (strpos($raw, 'MONITOR') !== false || strpos($raw, 'PANTALLA') !== false) return 'MONITOR';
+        if (strpos($raw, 'NET') !== false || strpos($raw, 'SWITCH') !== false || strpos($raw, 'ROUTER') !== false) return 'NETWORKING';
+        if (strpos($raw, 'PROYECTOR') !== false) return 'PROYECTOR';
+        if (strpos($raw, 'PERIFERICO') !== false || strpos($raw, 'TECLADO') !== false || strpos($raw, 'MOUSE') !== false) return 'PERIFERICO';
+        if (strpos($raw, 'COMPONENTE') !== false) return 'COMPONENTE_INTERNO';
+
+        return 'PC_ESCRITORIO';
     }
 
     /**
@@ -146,40 +181,64 @@ class Equipo {
                 LIMIT 1
             ");
             $id = $stmt->fetchColumn();
-            return $id ? (int)$id : null;
+            if ($id) return (int)$id;
         } catch (Throwable $e) {
-            try {
-                $stmtFallback = $db->query("
-                    SELECT id FROM salas 
-                    WHERE LOWER(nombre) LIKE '%depósito%' 
-                       OR LOWER(nombre) LIKE '%deposito%' 
-                       OR capacidad_puestos = 0
-                    ORDER BY id ASC 
-                    LIMIT 1
-                ");
-                $id = $stmtFallback->fetchColumn();
-                return $id ? (int)$id : null;
-            } catch (Throwable $inner) {
-                return null;
-            }
+            // Fallback sin columna tipo
+        }
+
+        try {
+            $stmtFallback = $db->query("
+                SELECT id FROM salas 
+                WHERE LOWER(nombre) LIKE '%depósito%' 
+                   OR LOWER(nombre) LIKE '%deposito%' 
+                   OR capacidad_puestos = 0
+                ORDER BY id ASC 
+                LIMIT 1
+            ");
+            $id = $stmtFallback->fetchColumn();
+            if ($id) return (int)$id;
+        } catch (Throwable $inner) {
+            // Fallback final
+        }
+
+        try {
+            $id = $db->query("SELECT id FROM salas ORDER BY id ASC LIMIT 1")->fetchColumn();
+            return $id ? (int)$id : null;
+        } catch (Throwable $last) {
+            return null;
         }
     }
 
     public static function create(array $data): int {
         $db = Database::getConnection();
 
-        $required = ['codigo_patrimonial', 'numero_serie', 'categoria', 'marca', 'modelo', 'estado', 'sala_id'];
-        foreach ($required as $field) {
-            if (empty($data[$field]) || trim((string)$data[$field]) === '') {
-                throw new InvalidArgumentException("El campo '{$field}' es obligatorio.", 400);
-            }
+        $codigo = trim((string)($data['codigo_patrimonial'] ?? $data['codigo'] ?? ''));
+        if ($codigo === '') {
+            throw new InvalidArgumentException("El campo 'codigo_patrimonial' es obligatorio.", 400);
         }
 
-        $codigo = trim($data['codigo_patrimonial']);
-        $serial = trim($data['numero_serie']);
-        $estado = strtoupper(trim($data['estado']));
-        if (in_array($estado, ['PRESTAMO', 'EN_PRESTAMO'], true)) {
+        $marca = trim((string)($data['marca'] ?? $data['nombre'] ?? ''));
+        if ($marca === '') {
+            throw new InvalidArgumentException("El campo 'marca' es obligatorio.", 400);
+        }
+
+        $modelo = trim((string)($data['modelo'] ?? $data['tipo'] ?? ''));
+        if ($modelo === '') {
+            throw new InvalidArgumentException("El campo 'modelo' es obligatorio.", 400);
+        }
+
+        $categoria = self::normalizeCategoria($data);
+
+        $serial = trim((string)($data['numero_serie'] ?? $data['serie'] ?? $data['serial'] ?? ''));
+        if ($serial === '') {
+            $serial = 'S/N-' . $codigo;
+        }
+
+        $estado = strtoupper(trim((string)($data['estado'] ?? 'OPERATIVO')));
+        if ($estado === '' || in_array($estado, ['PRESTAMO', 'EN_PRESTAMO', 'ACTIVO', 'DISPONIBLE'], true)) {
             $estado = 'OPERATIVO';
+        } elseif (in_array($estado, ['BAJA', 'INACTIVO', 'DADO_DE_BAJA'], true)) {
+            $estado = 'DE_BAJA';
         }
         if (!in_array($estado, ['OPERATIVO', 'DE_BAJA'], true)) {
             throw new InvalidArgumentException("El estado '{$estado}' no es válido. Estados permitidos: OPERATIVO, DE_BAJA.", 400);
@@ -197,19 +256,32 @@ class Equipo {
             throw new RuntimeException("El número de serie '{$serial}' ya está registrado.", 409);
         }
 
-        $sala_id = (int)$data['sala_id'];
-        $puesto_id = null;
+        $rawSala = $data['sala_id'] ?? $data['id_sala'] ?? null;
+        $sala_id = ($rawSala !== null && trim((string)$rawSala) !== '' && trim((string)$rawSala) !== 'null' && trim((string)$rawSala) !== 'undefined' && (int)$rawSala > 0)
+            ? (int)$rawSala
+            : 0;
+
+        $rawPuesto = $data['puesto_id'] ?? $data['id_puesto'] ?? null;
+        $puesto_id = ($rawPuesto !== null && trim((string)$rawPuesto) !== '' && trim((string)$rawPuesto) !== 'null' && trim((string)$rawPuesto) !== 'undefined' && (int)$rawPuesto > 0)
+            ? (int)$rawPuesto
+            : null;
 
         if ($estado === 'DE_BAJA') {
             $puesto_id = null;
-        } elseif (!empty($data['puesto_id']) && (int)$data['puesto_id'] > 0) {
-            $puesto_id = (int)$data['puesto_id'];
-
-            // Validar que el puesto pertenezca a la sala seleccionada
+            if ($sala_id <= 0) {
+                $sala_id = self::getDepositoSalaId($db) ?? 1;
+            }
+        } elseif ($puesto_id !== null && $puesto_id > 0) {
+            // Validar que el puesto exista y pertenezca a la sala seleccionada
             $stmtPuesto = $db->prepare("SELECT sala_id FROM puestos WHERE id = :puesto_id LIMIT 1");
             $stmtPuesto->execute([':puesto_id' => $puesto_id]);
             $puestoRow = $stmtPuesto->fetch();
-            if (!$puestoRow || (int)$puestoRow['sala_id'] !== $sala_id) {
+            if (!$puestoRow) {
+                throw new InvalidArgumentException("El puesto seleccionado no existe.", 400);
+            }
+            if ($sala_id <= 0) {
+                $sala_id = (int)$puestoRow['sala_id'];
+            } elseif ((int)$puestoRow['sala_id'] !== $sala_id) {
                 throw new InvalidArgumentException("El puesto no pertenece a la sala seleccionada.", 400);
             }
 
@@ -219,10 +291,13 @@ class Equipo {
                 throw new RuntimeException("El puesto seleccionado ya está asignado a otro equipo.", 409);
             }
         } else {
+            $puesto_id = null;
             // Equipo OPERATIVO sin puesto asignado -> vincular a la sala de Depósito/Almacén
             $depositoId = self::getDepositoSalaId($db);
             if ($depositoId !== null) {
                 $sala_id = $depositoId;
+            } elseif ($sala_id <= 0) {
+                throw new InvalidArgumentException("El campo 'sala_id' es obligatorio.", 400);
             }
         }
 
@@ -266,19 +341,19 @@ class Equipo {
         $stmt->execute([
             ':codigo_patrimonial' => $codigo,
             ':numero_serie'       => $serial,
-            ':categoria'          => trim($data['categoria']),
-            ':marca'              => trim($data['marca']),
-            ':modelo'             => trim($data['modelo']),
+            ':categoria'          => $categoria,
+            ':marca'              => $marca,
+            ':modelo'             => $modelo,
             ':estado'             => $estado,
             ':sala_id'            => $sala_id,
             ':puesto_id'          => $puesto_id,
-            ':cpu'                => !empty($data['cpu']) ? trim($data['cpu']) : null,
-            ':ram_gb'             => (!empty($data['ram_gb']) && (int)$data['ram_gb'] > 0) ? (int)$data['ram_gb'] : null,
-            ':almacenamiento'     => !empty($data['almacenamiento']) ? trim($data['almacenamiento']) : null,
-            ':ip_asignada'        => !empty($data['ip_asignada']) ? trim($data['ip_asignada']) : null,
-            ':mac_address'        => !empty($data['mac_address']) ? trim($data['mac_address']) : null,
-            ':fecha_ingreso'      => !empty($data['fecha_ingreso']) ? trim($data['fecha_ingreso']) : date('Y-m-d'),
-            ':notas'              => !empty($data['notas']) ? trim($data['notas']) : null,
+            ':cpu'                => !empty($data['cpu']) && trim((string)$data['cpu']) !== '' ? trim((string)$data['cpu']) : null,
+            ':ram_gb'             => (!empty($data['ram_gb']) && is_numeric($data['ram_gb']) && (int)$data['ram_gb'] > 0) ? (int)$data['ram_gb'] : null,
+            ':almacenamiento'     => !empty($data['almacenamiento']) && trim((string)$data['almacenamiento']) !== '' ? trim((string)$data['almacenamiento']) : null,
+            ':ip_asignada'        => !empty($data['ip_asignada']) && trim((string)$data['ip_asignada']) !== '' ? trim((string)$data['ip_asignada']) : null,
+            ':mac_address'        => !empty($data['mac_address']) && trim((string)$data['mac_address']) !== '' ? trim((string)$data['mac_address']) : null,
+            ':fecha_ingreso'      => !empty($data['fecha_ingreso']) && trim((string)$data['fecha_ingreso']) !== '' ? trim((string)$data['fecha_ingreso']) : date('Y-m-d'),
+            ':notas'              => !empty($data['notas']) && trim((string)$data['notas']) !== '' ? trim((string)$data['notas']) : null,
         ]);
 
         return (int)$db->lastInsertId();
@@ -290,19 +365,33 @@ class Equipo {
     public static function update(int $id, array $data): bool {
         $db = Database::getConnection();
 
-        // 1. Validar requeridos
-        $required = ['codigo_patrimonial', 'numero_serie', 'categoria', 'marca', 'modelo', 'estado', 'sala_id'];
-        foreach ($required as $field) {
-            if (empty($data[$field]) || trim((string)$data[$field]) === '') {
-                throw new InvalidArgumentException("El campo '{$field}' es obligatorio.", 400);
-            }
+        $codigo = trim((string)($data['codigo_patrimonial'] ?? $data['codigo'] ?? ''));
+        if ($codigo === '') {
+            throw new InvalidArgumentException("El campo 'codigo_patrimonial' es obligatorio.", 400);
         }
 
-        $codigo = trim($data['codigo_patrimonial']);
-        $serial = trim($data['numero_serie']);
-        $estado = strtoupper(trim($data['estado']));
-        if (in_array($estado, ['PRESTAMO', 'EN_PRESTAMO'], true)) {
+        $marca = trim((string)($data['marca'] ?? $data['nombre'] ?? ''));
+        if ($marca === '') {
+            throw new InvalidArgumentException("El campo 'marca' es obligatorio.", 400);
+        }
+
+        $modelo = trim((string)($data['modelo'] ?? $data['tipo'] ?? ''));
+        if ($modelo === '') {
+            throw new InvalidArgumentException("El campo 'modelo' es obligatorio.", 400);
+        }
+
+        $categoria = self::normalizeCategoria($data);
+
+        $serial = trim((string)($data['numero_serie'] ?? $data['serie'] ?? $data['serial'] ?? ''));
+        if ($serial === '') {
+            $serial = 'S/N-' . $codigo;
+        }
+
+        $estado = strtoupper(trim((string)($data['estado'] ?? 'OPERATIVO')));
+        if ($estado === '' || in_array($estado, ['PRESTAMO', 'EN_PRESTAMO', 'ACTIVO', 'DISPONIBLE'], true)) {
             $estado = 'OPERATIVO';
+        } elseif (in_array($estado, ['BAJA', 'INACTIVO', 'DADO_DE_BAJA'], true)) {
+            $estado = 'DE_BAJA';
         }
         if (!in_array($estado, ['OPERATIVO', 'DE_BAJA'], true)) {
             throw new InvalidArgumentException("El estado '{$estado}' no es válido. Estados permitidos: OPERATIVO, DE_BAJA.", 400);
@@ -322,19 +411,32 @@ class Equipo {
         }
 
         // 3. Validar puesto y sincronizar sala de depósito si corresponde
-        $sala_id = (int)$data['sala_id'];
-        $puesto_id = null;
+        $rawSala = $data['sala_id'] ?? $data['id_sala'] ?? null;
+        $sala_id = ($rawSala !== null && trim((string)$rawSala) !== '' && trim((string)$rawSala) !== 'null' && trim((string)$rawSala) !== 'undefined' && (int)$rawSala > 0)
+            ? (int)$rawSala
+            : 0;
+
+        $rawPuesto = $data['puesto_id'] ?? $data['id_puesto'] ?? null;
+        $puesto_id = ($rawPuesto !== null && trim((string)$rawPuesto) !== '' && trim((string)$rawPuesto) !== 'null' && trim((string)$rawPuesto) !== 'undefined' && (int)$rawPuesto > 0)
+            ? (int)$rawPuesto
+            : null;
 
         if ($estado === 'DE_BAJA') {
             $puesto_id = null;
-        } elseif (!empty($data['puesto_id']) && (int)$data['puesto_id'] > 0) {
-            $puesto_id = (int)$data['puesto_id'];
-
+            if ($sala_id <= 0) {
+                $sala_id = self::getDepositoSalaId($db) ?? 1;
+            }
+        } elseif ($puesto_id !== null && $puesto_id > 0) {
             // Validar que el puesto pertenezca a la sala seleccionada
             $stmtPuesto = $db->prepare("SELECT sala_id FROM puestos WHERE id = :puesto_id LIMIT 1");
             $stmtPuesto->execute([':puesto_id' => $puesto_id]);
             $puestoRow = $stmtPuesto->fetch();
-            if (!$puestoRow || (int)$puestoRow['sala_id'] !== $sala_id) {
+            if (!$puestoRow) {
+                throw new InvalidArgumentException("El puesto seleccionado no existe.", 400);
+            }
+            if ($sala_id <= 0) {
+                $sala_id = (int)$puestoRow['sala_id'];
+            } elseif ((int)$puestoRow['sala_id'] !== $sala_id) {
                 throw new InvalidArgumentException("El puesto no pertenece a la sala seleccionada.", 400);
             }
 
@@ -344,10 +446,13 @@ class Equipo {
                 throw new RuntimeException("El puesto seleccionado ya está ocupado por otro activo.", 409);
             }
         } else {
+            $puesto_id = null;
             // Equipo OPERATIVO sin puesto asignado -> vincular a la sala de Depósito/Almacén
             $depositoId = self::getDepositoSalaId($db);
             if ($depositoId !== null) {
                 $sala_id = $depositoId;
+            } elseif ($sala_id <= 0) {
+                throw new InvalidArgumentException("El campo 'sala_id' es obligatorio.", 400);
             }
         }
 
@@ -377,19 +482,19 @@ class Equipo {
             ':id'                 => $id,
             ':codigo_patrimonial' => $codigo,
             ':numero_serie'       => $serial,
-            ':categoria'          => trim($data['categoria']),
-            ':marca'              => trim($data['marca']),
-            ':modelo'             => trim($data['modelo']),
+            ':categoria'          => $categoria,
+            ':marca'              => $marca,
+            ':modelo'             => $modelo,
             ':estado'             => $estado,
             ':sala_id'            => $sala_id,
             ':puesto_id'          => $puesto_id,
-            ':cpu'                => !empty($data['cpu']) ? trim($data['cpu']) : null,
-            ':ram_gb'             => (!empty($data['ram_gb']) && (int)$data['ram_gb'] > 0) ? (int)$data['ram_gb'] : null,
-            ':almacenamiento'     => !empty($data['almacenamiento']) ? trim($data['almacenamiento']) : null,
-            ':ip_asignada'        => !empty($data['ip_asignada']) ? trim($data['ip_asignada']) : null,
-            ':mac_address'        => !empty($data['mac_address']) ? trim($data['mac_address']) : null,
-            ':fecha_ingreso'      => !empty($data['fecha_ingreso']) ? trim($data['fecha_ingreso']) : date('Y-m-d'),
-            ':notas'              => !empty($data['notas']) ? trim($data['notas']) : null,
+            ':cpu'                => !empty($data['cpu']) && trim((string)$data['cpu']) !== '' ? trim((string)$data['cpu']) : null,
+            ':ram_gb'             => (!empty($data['ram_gb']) && is_numeric($data['ram_gb']) && (int)$data['ram_gb'] > 0) ? (int)$data['ram_gb'] : null,
+            ':almacenamiento'     => !empty($data['almacenamiento']) && trim((string)$data['almacenamiento']) !== '' ? trim((string)$data['almacenamiento']) : null,
+            ':ip_asignada'        => !empty($data['ip_asignada']) && trim((string)$data['ip_asignada']) !== '' ? trim((string)$data['ip_asignada']) : null,
+            ':mac_address'        => !empty($data['mac_address']) && trim((string)$data['mac_address']) !== '' ? trim((string)$data['mac_address']) : null,
+            ':fecha_ingreso'      => !empty($data['fecha_ingreso']) && trim((string)$data['fecha_ingreso']) !== '' ? trim((string)$data['fecha_ingreso']) : date('Y-m-d'),
+            ':notas'              => !empty($data['notas']) && trim((string)$data['notas']) !== '' ? trim((string)$data['notas']) : null,
         ]);
     }
 

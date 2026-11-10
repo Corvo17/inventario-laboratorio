@@ -11,6 +11,7 @@ import {
     obtenerEquipos, 
     obtenerSalas, 
     obtenerPuestosDisponibles, 
+    crearEquipo,
     registrarEquipo, 
     actualizarEquipo,
     generarUrlQr,
@@ -35,7 +36,7 @@ const modalRegistro = document.getElementById('modal-nuevo-equipo') || document.
 const btnNuevoEquipo = document.getElementById('btn-nuevo-equipo');
 const btnCerrarModal = document.getElementById('btn-cerrar-modal');
 const btnCancelarModal = document.getElementById('btn-cancelar-modal');
-const formNuevoEquipo = document.getElementById('form-nuevo-equipo');
+const formNuevoEquipo = document.getElementById('form-nuevo-equipo') || document.getElementById('form-equipo');
 const selectSala = document.getElementById('select-sala');
 const selectPuesto = document.getElementById('select-puesto');
 const modalAlert = document.getElementById('modal-alert');
@@ -844,7 +845,7 @@ async function inicializarVistaInventario() {
             e.preventDefault();
             ocultarErrorModal();
 
-            const originalGuardarHtml = btnGuardarEquipo ? btnGuardarEquipo.innerHTML : '';
+            const originalGuardarHtml = btnGuardarEquipo ? btnGuardarEquipo.innerHTML : 'Registrar Equipo';
             if (btnGuardarEquipo) {
                 btnGuardarEquipo.disabled = true;
                 btnGuardarEquipo.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Guardando...';
@@ -852,19 +853,65 @@ async function inicializarVistaInventario() {
 
             try {
                 const formData = new FormData(formNuevoEquipo);
-                const respuesta = await registrarEquipo(formData);
+                const rawCodigo = (formData.get('codigo_patrimonial') || formData.get('codigo') || document.getElementById('input-codigo')?.value || '').trim();
+                const rawSerial = (formData.get('numero_serie') || formData.get('serie') || document.getElementById('input-serial')?.value || '').trim();
+                const rawCategoria = (formData.get('categoria') || formData.get('tipo') || formData.get('nombre') || document.getElementById('select-categoria')?.value || 'PC_ESCRITORIO').trim();
+                const rawMarca = (formData.get('marca') || document.getElementById('input-marca')?.value || '').trim();
+                const rawModelo = (formData.get('modelo') || document.getElementById('input-modelo')?.value || '').trim();
+                const rawEstadoInput = (formData.get('estado') || document.getElementById('select-modal-estado')?.value || 'OPERATIVO').trim().toUpperCase();
+                const estadoValido = (rawEstadoInput === 'DE_BAJA') ? 'DE_BAJA' : 'OPERATIVO';
 
-                if (respuesta.success) {
+                const rawSalaVal = selectSala ? selectSala.value : (formData.get('sala_id') || formData.get('id_sala') || '');
+                const parsedSalaId = (rawSalaVal !== '' && !Number.isNaN(parseInt(rawSalaVal, 10)) && parseInt(rawSalaVal, 10) > 0)
+                    ? parseInt(rawSalaVal, 10)
+                    : null;
+
+                const rawPuestoVal = (selectPuesto && !selectPuesto.disabled) ? selectPuesto.value : (formData.get('puesto_id') || formData.get('id_puesto') || '');
+                const parsedPuestoId = (estadoValido !== 'DE_BAJA' && rawPuestoVal !== '' && !Number.isNaN(parseInt(rawPuestoVal, 10)) && parseInt(rawPuestoVal, 10) > 0)
+                    ? parseInt(rawPuestoVal, 10)
+                    : null;
+
+                const rawRamVal = (formData.get('ram_gb') || document.getElementById('input-ram')?.value || '').trim();
+                const parsedRamGb = (rawRamVal !== '' && !Number.isNaN(parseInt(rawRamVal, 10)) && parseInt(rawRamVal, 10) > 0)
+                    ? parseInt(rawRamVal, 10)
+                    : null;
+
+                const payload = {
+                    codigo_patrimonial: rawCodigo,
+                    codigo: rawCodigo,
+                    numero_serie: rawSerial,
+                    categoria: rawCategoria,
+                    tipo: rawCategoria,
+                    nombre: `${rawMarca} ${rawModelo}`.trim() || rawCategoria,
+                    marca: rawMarca,
+                    modelo: rawModelo,
+                    estado: estadoValido,
+                    sala_id: parsedSalaId,
+                    id_sala: parsedSalaId,
+                    puesto_id: parsedPuestoId,
+                    id_puesto: parsedPuestoId,
+                    fecha_ingreso: (formData.get('fecha_ingreso') || document.getElementById('input-fecha-ingreso')?.value || '').trim() || null,
+                    cpu: (formData.get('cpu') || document.getElementById('input-cpu')?.value || '').trim() || null,
+                    ram_gb: parsedRamGb,
+                    almacenamiento: (formData.get('almacenamiento') || document.getElementById('input-disco')?.value || '').trim() || null,
+                    ip_asignada: (formData.get('ip_asignada') || document.getElementById('input-ip')?.value || '').trim() || null,
+                    mac_address: (formData.get('mac_address') || document.getElementById('input-mac')?.value || '').trim() || null,
+                    notas: (formData.get('notas') || document.getElementById('input-notas')?.value || '').trim() || null
+                };
+
+                const respuesta = await apiService.crearEquipo(payload);
+
+                if (respuesta && respuesta.success) {
                     Toast.success('Equipo Registrado', 'El activo patrimonial fue guardado correctamente.');
                     cerrarModalAlta();
-                    cargarInventario();
+                    await cargarInventario();
                 } else {
-                    mostrarErrorModal(respuesta.message || 'Error al guardar el equipo.');
-                    Toast.error('Error al Registrar', respuesta.message || 'No se pudo guardar.');
+                    mostrarErrorModal(respuesta?.message || 'Error al guardar el equipo.');
+                    Toast.error('Error al Registrar', respuesta?.message || 'No se pudo guardar.');
                 }
             } catch (error) {
                 mostrarErrorModal(error.message || 'Error de conexión.');
-                Toast.error('Error de Conexión', error.message);
+                Toast.error('Error al Registrar', error.message || 'Error de conexión.');
             } finally {
                 if (btnGuardarEquipo) {
                     btnGuardarEquipo.disabled = false;
@@ -997,18 +1044,33 @@ async function inicializarVistaInventario() {
             }
 
             const id = document.getElementById('edit-equipo-id').value;
+            const editSalaVal = selectEditSala ? selectEditSala.value : '';
+            const parsedEditSalaId = (editSalaVal !== '' && !Number.isNaN(parseInt(editSalaVal, 10)) && parseInt(editSalaVal, 10) > 0)
+                ? parseInt(editSalaVal, 10)
+                : null;
+            const editPuestoVal = (selectEditPuesto && !selectEditPuesto.disabled && selectEditPuesto.value) ? selectEditPuesto.value : '';
+            const parsedEditPuestoId = (editPuestoVal !== '' && !Number.isNaN(parseInt(editPuestoVal, 10)) && parseInt(editPuestoVal, 10) > 0)
+                ? parseInt(editPuestoVal, 10)
+                : null;
+            const editRamVal = document.getElementById('edit-ram').value;
+            const parsedEditRam = (editRamVal !== '' && !Number.isNaN(parseInt(editRamVal, 10)) && parseInt(editRamVal, 10) > 0)
+                ? parseInt(editRamVal, 10)
+                : null;
+
             const payload = {
                 codigo_patrimonial: document.getElementById('edit-codigo').value.trim(),
                 numero_serie: document.getElementById('edit-serial').value.trim(),
                 marca: document.getElementById('edit-marca').value.trim(),
                 modelo: document.getElementById('edit-modelo').value.trim(),
                 categoria: document.getElementById('edit-categoria').value,
-                estado: document.getElementById('edit-estado').value,
+                estado: document.getElementById('edit-estado').value === 'DE_BAJA' ? 'DE_BAJA' : 'OPERATIVO',
                 fecha_ingreso: document.getElementById('edit-fecha-ingreso').value || null,
-                sala_id: selectEditSala ? selectEditSala.value : null,
-                puesto_id: selectEditPuesto && selectEditPuesto.value ? selectEditPuesto.value : null,
+                sala_id: parsedEditSalaId,
+                id_sala: parsedEditSalaId,
+                puesto_id: parsedEditPuestoId,
+                id_puesto: parsedEditPuestoId,
                 cpu: document.getElementById('edit-cpu').value.trim() || null,
-                ram_gb: document.getElementById('edit-ram').value || null,
+                ram_gb: parsedEditRam,
                 almacenamiento: document.getElementById('edit-disco').value.trim() || null,
                 ip_asignada: document.getElementById('edit-ip').value.trim() || null,
                 mac_address: document.getElementById('edit-mac').value.trim() || null,

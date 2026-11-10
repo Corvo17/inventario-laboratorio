@@ -1,4 +1,7 @@
 <?php
+ini_set('display_errors', '0');
+error_reporting(E_ALL);
+
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../controllers/EquipoController.php';
 require_once __DIR__ . '/../controllers/AuthController.php';
@@ -13,8 +16,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-$action = $_GET['action'] ?? '';
-$id = !empty($_GET['id']) ? (int)$_GET['id'] : 0;
+$action = $_GET['action'] ?? $_POST['action'] ?? '';
+$id = !empty($_GET['id']) ? (int)$_GET['id'] : (!empty($_POST['id']) ? (int)$_POST['id'] : 0);
 
 if ($method === 'GET') {
     if ($action === 'dashboard-metrics') {
@@ -33,6 +36,9 @@ if ($method === 'GET') {
     } elseif ($action === 'dar-de-baja') {
         AuthController::requireAdmin('Acción restringida: solo un Administrador puede autorizar la baja patrimonial de un activo.');
         EquipoController::darDeBaja($id);
+    } elseif ($action === 'crear' || $action === '') {
+        AuthController::requireAuth();
+        EquipoController::store();
     } else {
         AuthController::requireAuth();
         EquipoController::store();

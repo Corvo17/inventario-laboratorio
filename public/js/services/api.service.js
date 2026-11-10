@@ -88,14 +88,77 @@ export async function obtenerEquipos(filtros = {}) {
     }
 }
 
+/**
+ * Normaliza los datos de un equipo (desde FormData u objeto plano) garantizando tipos válidos para el backend PHP
+ */
+function normalizarPayloadEquipo(data) {
+    const raw = (data instanceof FormData) ? Object.fromEntries(data.entries()) : { ...(data || {}) };
+
+    const toNullableInt = (val) => {
+        if (val === undefined || val === null || String(val).trim() === '' || val === 'null' || val === 'undefined') {
+            return null;
+        }
+        const parsed = parseInt(val, 10);
+        return (!Number.isNaN(parsed) && parsed > 0) ? parsed : null;
+    };
+
+    const toNullableStr = (val) => {
+        if (val === undefined || val === null) return null;
+        const trimmed = String(val).trim();
+        return trimmed !== '' ? trimmed : null;
+    };
+
+    const codigo = toNullableStr(raw.codigo_patrimonial ?? raw.codigo) || '';
+    const serial = toNullableStr(raw.numero_serie ?? raw.serie ?? raw.serial) || '';
+    const categoria = toNullableStr(raw.categoria ?? raw.tipo ?? raw.nombre) || 'PC_ESCRITORIO';
+    const marca = toNullableStr(raw.marca) || '';
+    const modelo = toNullableStr(raw.modelo) || '';
+
+    let estado = (toNullableStr(raw.estado) || 'OPERATIVO').toUpperCase();
+    if (estado !== 'OPERATIVO' && estado !== 'DE_BAJA') {
+        estado = 'OPERATIVO';
+    }
+
+    const salaId = toNullableInt(raw.sala_id ?? raw.id_sala);
+    const puestoId = estado === 'DE_BAJA' ? null : toNullableInt(raw.puesto_id ?? raw.id_puesto);
+
+    return {
+        codigo_patrimonial: codigo,
+        codigo: codigo,
+        numero_serie: serial,
+        categoria: categoria,
+        tipo: categoria,
+        nombre: toNullableStr(raw.nombre) || `${marca} ${modelo}`.trim() || categoria,
+        marca: marca,
+        modelo: modelo,
+        estado: estado,
+        sala_id: salaId,
+        id_sala: salaId,
+        puesto_id: puestoId,
+        id_puesto: puestoId,
+        fecha_ingreso: toNullableStr(raw.fecha_ingreso),
+        cpu: toNullableStr(raw.cpu),
+        ram_gb: toNullableInt(raw.ram_gb),
+        almacenamiento: toNullableStr(raw.almacenamiento),
+        ip_asignada: toNullableStr(raw.ip_asignada),
+        mac_address: toNullableStr(raw.mac_address),
+        notas: toNullableStr(raw.notas)
+    };
+}
+
 export async function obtenerDetalleEquipo(id) {
     try {
         const response = await fetch(`../api/routes/equipos.php?action=detalle&id=${encodeURIComponent(id)}`, {
             method: 'GET',
-            headers: { 'Accept': 'application/json' }
+            headers: { 'Accept': 'application/json' },
+            credentials: 'include'
         });
-        const json = await response.json();
-        if (!response.ok) throw new Error(json.message || `HTTP ${response.status}`);
+        const json = await response.json().catch(() => null);
+        if (!response.ok) {
+            const err = new Error(json?.message || `Error HTTP ${response.status} al obtener detalle del equipo.`);
+            err.status = response.status;
+            throw err;
+        }
         return json;
     } catch (error) {
         console.error('Error al obtener detalle del equipo:', error);
@@ -105,14 +168,25 @@ export async function obtenerDetalleEquipo(id) {
 
 export async function crearEquipo(data) {
     try {
-        const isFormData = data instanceof FormData;
-        const response = await fetch('../api/routes/equipos.php', {
+        const payload = normalizarPayloadEquipo(data);
+        const response = await fetch('../api/routes/equipos.php?action=crear', {
             method: 'POST',
-            headers: isFormData ? { 'Accept': 'application/json' } : { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: isFormData ? data : JSON.stringify(data)
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify(payload)
         });
-        const json = await response.json();
-        if (!response.ok) throw new Error(json.message || `HTTP ${response.status}`);
+        const json = await response.json().catch(() => null);
+        if (!response.ok || (json && json.success === false)) {
+            const err = new Error(json?.message || `Error HTTP ${response.status} al registrar el equipo.`);
+            err.status = response.status;
+            throw err;
+        }
+        if (!json) {
+            throw new Error('Respuesta JSON inválida del servidor al crear el equipo.');
+        }
         return json;
     } catch (error) {
         console.error('Error al crear equipo:', error);
@@ -122,14 +196,22 @@ export async function crearEquipo(data) {
 
 export async function actualizarEquipo(id, data) {
     try {
-        const isFormData = data instanceof FormData;
+        const payload = normalizarPayloadEquipo(data);
         const response = await fetch(`../api/routes/equipos.php?action=actualizar&id=${encodeURIComponent(id)}`, {
             method: 'POST',
-            headers: isFormData ? { 'Accept': 'application/json' } : { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: isFormData ? data : JSON.stringify(data)
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify(payload)
         });
-        const json = await response.json();
-        if (!response.ok) throw new Error(json.message || `HTTP ${response.status}`);
+        const json = await response.json().catch(() => null);
+        if (!response.ok || (json && json.success === false)) {
+            const err = new Error(json?.message || `Error HTTP ${response.status} al actualizar el equipo.`);
+            err.status = response.status;
+            throw err;
+        }
         return json;
     } catch (error) {
         console.error('Error al actualizar equipo:', error);
@@ -142,10 +224,15 @@ export async function darDeBajaEquipo(id, motivo = '') {
         const response = await fetch(`../api/routes/equipos.php?action=dar-de-baja&id=${encodeURIComponent(id)}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ motivo })
         });
-        const json = await response.json();
-        if (!response.ok) throw new Error(json.message || `HTTP ${response.status}`);
+        const json = await response.json().catch(() => null);
+        if (!response.ok || (json && json.success === false)) {
+            const err = new Error(json?.message || `Error HTTP ${response.status} al dar de baja el equipo.`);
+            err.status = response.status;
+            throw err;
+        }
         return json;
     } catch (error) {
         console.error('Error al dar de baja equipo:', error);
@@ -222,6 +309,14 @@ export const obtenerEquipoPorId = obtenerDetalleEquipo;
 export function generarUrlQr(codigo) {
     return `LAB-INV-${codigo}`;
 }
+
+apiService.crearEquipo = crearEquipo;
+apiService.registrarEquipo = crearEquipo;
+apiService.actualizarEquipo = actualizarEquipo;
+apiService.obtenerEquipos = obtenerEquipos;
+apiService.obtenerSalas = obtenerSalas;
+apiService.obtenerPuestosDisponibles = obtenerPuestos;
+apiService.darDeBajaEquipo = darDeBajaEquipo;
 
 
 export async function obtenerMapaUbicaciones() {
